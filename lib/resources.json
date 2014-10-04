@@ -1,0 +1,19 @@
+{
+  "resources/webgl-test.js": {
+    "name": "WEBGLTEST",
+    "module": "../lib/shims/webgl-test",
+    "exports": [
+      "webglTestLog",
+      "getGLErrorAsString",
+      "shouldGenerateGLError",
+      "glErrorShouldBe"
+    ]
+  },
+  "resources/webgl-test-utils.js": { 
+    "name": "WEBGLTESTUTILS",
+    "module": "../lib/webgl-test-utils",
+    "exports": [
+      "WebGLTestUtils"
+    ]
+  }
+}
