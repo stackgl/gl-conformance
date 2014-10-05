@@ -56,20 +56,15 @@
   },
   "../resources/js-test-post.js": {
     "name": "TESTPOST",
-    "module": "../lib/shim/js-test-post",
+    "module": "../lib/shims/js-test-post",
     "exports": [
     ]
   },
-  "more/util.js": {
-    "name": "MOREUTIL",
-    "module": "../lib/shim/more-util",
+  "../resources/desktop-gl-constants.js": {
+    "name": "GLCONSTANTS",
+    "module": "../lib/shims/desktop-gl-constants",
     "exports": [
-    ]
-  },
-  "more/unit.js": {
-    "name": "MOREUNIT",
-    "module": "../lib/shim/more-unit",
-    "exports": [
+      "desktopGL"
     ]
   }
 }

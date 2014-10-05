@@ -1,23 +1,42 @@
-The Official Khronos WebGL Repository
+gl-conformance
+==============
+A port of the Khronos ARB WebGL conformance test suite to CommonJS and tape, so that it can be run without a browser.
 
-This is the official home of the Khronos
-WebGL repository for the WebGL specifications
-and the WebGL conformance test suite.
+# Example usage
 
-Before adding a new test or editing an existing test
-[please read these guidelines](sdk/tests/test-guidelines.md).
+To use the test suite, you pass it a reference to tape and whatever function you are going to use to create WebGL contexts:
 
-You can find live versions of the specifications at
-http://www.khronos.org/webgl/
+```javascript
+require('gl-conformance')({
+  tape: require('tape'),
+  createContext: function(width, height, options) {
+    //Replace this with a function that constructs your WebGL context
+    var canvas    = document.createElement('canvas')
+    canvas.width  = width
+    canvas.height = height
+    var context   = canvas.getContext('webgl', opts)
+    return context
+  }
+})
+```
 
-The newest work in progress WebGL conformance test suite
-for the next version of the spec can be accessed at.
-https://www.khronos.org/registry/webgl/sdk/tests/webgl-conformance-tests.html
+Then it will churn away at all the Khronos/ARB test cases and report the output to stdout as one would expect tap/tape to do.
 
-Official live versions of the conformance test suite can be found at
-https://www.khronos.org/registry/webgl/conformance-suites/
+# Installation
 
-The WebGL Wiki can be found here
-http://www.khronos.org/webgl/wiki/
+```
+npm install gl-conformance
+```
 
+# API
 
+### `require('gl-conformance')(environment)`
+Runs the WebGL conformance suite within the given environment.  `environment` is an object with the following properties:
+
+* `tape` a refernce to a [`tape` object](https://www.npmjs.org/package/tape)
+* `createContext(width,height,opts)` a function which creates a WebGL context from the given parameters
+
+# License
+Conformance tests are (c) Khronos ARB
+
+CommonJS port by Mikola Lysenko
