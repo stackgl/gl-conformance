@@ -46,7 +46,6 @@ extensions/index.html
 extensions/registry.xml
 extensions/extension-schematron.xsl
 extensions/schematron/webgl_message.xsl
-node-modules/*
 conformance-suites/*
 extensions/*
 doc/*
