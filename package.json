@@ -1,0 +1,46 @@
+{
+  "name": "gl-conformance",
+  "version": "1.0.0",
+  "description": "Khronos WebGL conformance test suite",
+  "main": "run-test.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "dependencies": {
+    "concat-stream": "^1.4.6",
+    "js-beautify": "^1.5.4",
+    "mkdirp": "^0.5.0",
+    "rimraf": "^2.2.8",
+    "trumpet": "^1.7.0"
+  },
+  "devDependencies": {
+    "tape": "^3.0.0",
+    "beefy": "^2.1.1",
+    "browserify": "^6.0.2"
+  },
+  "scripts": {
+    "test": "beefy --open example.js",
+    "build": "node build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/stackgl/gl-conformance.git"
+  },
+  "keywords": [
+    "webgl",
+    "conformance",
+    "khronos",
+    "arb",
+    "node",
+    "commonjs",
+    "tape",
+    "browserify",
+    "tap"
+  ],
+  "author": "Mikola Lysenko",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stackgl/gl-conformance/issues"
+  },
+  "homepage": "https://github.com/stackgl/gl-conformance"
+}
