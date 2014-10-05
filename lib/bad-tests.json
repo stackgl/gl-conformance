@@ -1,0 +1,7 @@
+[
+  "textures/texture-npot-video.html",
+  "extensions/oes-texture-float-with-video.html",
+  "context/context-release-upon-reload.html",
+  "context/context-release-with-workers.html",
+  "context/context-loss-restored.html"
+]

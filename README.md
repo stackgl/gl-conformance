@@ -14,7 +14,7 @@ require('gl-conformance')({
     var canvas    = document.createElement('canvas')
     canvas.width  = width
     canvas.height = height
-    var context   = canvas.getContext('webgl', opts)
+    var context   = canvas.getContext('webgl', options)
     return context
   }
 })
@@ -57,6 +57,12 @@ npm run-script build
 
 ```
 npm test
+```
+
+### 4. Publish
+
+```
+npm publish
 ```
 
 # License

@@ -20,6 +20,8 @@
     "name": "TESTHARNESS",
     "module": "../lib/shims/js-test-pre",
     "exports": [ 
+      "initTestingHarnessWaitUntilDone",
+      "initTestingHarness",
       "nonKhronosFrameworkNotifyDone",
       "reportTestResultsToHarness",
       "notifyFinishedToHarness",

@@ -9,7 +9,7 @@ runTest({
     var canvas    = document.createElement('canvas')
     canvas.width  = width
     canvas.height = height
-    var context   = canvas.getContext('webgl', opts)
+    var context   = canvas.getContext('webgl', options)
     return context
   }
 })
