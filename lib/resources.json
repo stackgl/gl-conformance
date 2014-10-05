@@ -11,9 +11,65 @@
   },
   "resources/webgl-test-utils.js": { 
     "name": "WEBGLTESTUTILS",
-    "module": "../lib/webgl-test-utils",
+    "module": "../lib/shims/webgl-test-utils",
     "exports": [
       "WebGLTestUtils"
+    ]
+  },
+  "../resources/js-test-pre.js": {
+    "name": "TESTHARNESS",
+    "module": "../lib/shims/js-test-pre",
+    "exports": [ 
+      "nonKhronosFrameworkNotifyDone",
+      "reportTestResultsToHarness",
+      "notifyFinishedToHarness",
+      "description",
+      "debug",
+      "escapeHTML",
+      "testPassed",
+      "testFailed",
+      "areArraysEqual",
+      "isMinusZero",
+      "isResultCorrect",
+      "stringify",
+      "evalAndLog",
+      "shouldBe",
+      "shouldNotBe",
+      "shouldBeTrue",
+      "shouldBeFalse",
+      "shouldBeNaN",
+      "shouldBeNull",
+      "shouldBeEqualToString",
+      "shouldEvaluateTo",
+      "shouldBeNonZero",
+      "shouldBeNonNull",
+      "shouldBeUndefined",
+      "shouldBeDefined",
+      "shouldBeGreaterThanOrEqual",
+      "expectTrue",
+      "shouldThrow",
+      "shouldBeType",
+      "assertMsg",
+      "gc",
+      "finishTest"
+    ]
+  },
+  "../resources/js-test-post.js": {
+    "name": "TESTPOST",
+    "module": "../lib/shim/js-test-post",
+    "exports": [
+    ]
+  },
+  "more/util.js": {
+    "name": "MOREUTIL",
+    "module": "../lib/shim/more-util",
+    "exports": [
+    ]
+  },
+  "more/unit.js": {
+    "name": "MOREUNIT",
+    "module": "../lib/shim/more-unit",
+    "exports": [
     ]
   }
 }
