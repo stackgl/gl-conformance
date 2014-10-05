@@ -36,6 +36,29 @@ Runs the WebGL conformance suite within the given environment.  `environment` is
 * `tape` a refernce to a [`tape` object](https://www.npmjs.org/package/tape)
 * `createContext(width,height,opts)` a function which creates a WebGL context from the given parameters
 
+# Building the test suite
+
+If you are installing from npm, you can ignore this section.  Otherwise, for users who are building the project from github, you need to do the following:
+
+
+### 1. Install dependencies
+
+```
+npm install
+```
+
+### 2. Run the build script
+
+```
+npm run-script build
+```
+
+### 3. Run the test (uses browser WebGL context)
+
+```
+npm test
+```
+
 # License
 Conformance tests are (c) Khronos ARB
 
