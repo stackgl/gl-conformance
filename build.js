@@ -28,6 +28,7 @@ function basePath(file) {
 
 function writeManifest(fileList) {
   console.log('writing manifest...')
+  fileList.sort()
   var code = [ 'module.exports=[' ]
   for(var i=0; i<fileList.length; ++i) {
     if(i > 0) {

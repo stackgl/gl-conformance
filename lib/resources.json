@@ -1,72 +1,17 @@
 {
   "resources/webgl-test.js": {
-    "name": "WEBGLTEST",
-    "module": "../lib/shims/webgl-test",
-    "exports": [
-      "webglTestLog",
-      "getGLErrorAsString",
-      "shouldGenerateGLError",
-      "glErrorShouldBe"
-    ]
+    "path": "shims/webgl-test.js"
   },
   "resources/webgl-test-utils.js": { 
-    "name": "WEBGLTESTUTILS",
-    "module": "../lib/shims/webgl-test-utils",
-    "exports": [
-      "WebGLTestUtils"
-    ]
+    "path": "shims/webgl-test-utils.js"
   },
   "../resources/js-test-pre.js": {
-    "name": "TESTHARNESS",
-    "module": "../lib/shims/js-test-pre",
-    "exports": [ 
-      "initTestingHarnessWaitUntilDone",
-      "initTestingHarness",
-      "nonKhronosFrameworkNotifyDone",
-      "reportTestResultsToHarness",
-      "notifyFinishedToHarness",
-      "description",
-      "debug",
-      "escapeHTML",
-      "testPassed",
-      "testFailed",
-      "areArraysEqual",
-      "isMinusZero",
-      "isResultCorrect",
-      "stringify",
-      "evalAndLog",
-      "shouldBe",
-      "shouldNotBe",
-      "shouldBeTrue",
-      "shouldBeFalse",
-      "shouldBeNaN",
-      "shouldBeNull",
-      "shouldBeEqualToString",
-      "shouldEvaluateTo",
-      "shouldBeNonZero",
-      "shouldBeNonNull",
-      "shouldBeUndefined",
-      "shouldBeDefined",
-      "shouldBeGreaterThanOrEqual",
-      "expectTrue",
-      "shouldThrow",
-      "shouldBeType",
-      "assertMsg",
-      "gc",
-      "finishTest"
-    ]
+    "path": "shims/js-test-pre.js"
   },
   "../resources/js-test-post.js": {
-    "name": "TESTPOST",
-    "module": "../lib/shims/js-test-post",
-    "exports": [
-    ]
+    "path": "shims/js-test-post.js"
   },
   "../resources/desktop-gl-constants.js": {
-    "name": "GLCONSTANTS",
-    "module": "../lib/shims/desktop-gl-constants",
-    "exports": [
-      "desktopGL"
-    ]
+    "path": "shims/desktop-gl-constants.js"
   }
 }
