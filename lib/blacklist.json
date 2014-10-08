@@ -1,11 +1,20 @@
 [
-  "textures/texture-npot-video.html",
-  "extensions/oes-texture-float-with-video.html",
+  "canvas/canvas-test.html",
+  "canvas/to-data-url-test.html",
   "context/context-release-upon-reload.html",
   "context/context-release-with-workers.html",
   "context/context-lost-restored.html",
   "context/context-lost.html",
   "context/context-attribute-preserve-drawing-buffer.html",
-  "canvas/canvas-test.html",
-  "canvas/to-data-url-test.html"
+  "context/premultiplyalpha-test.html",
+  "extensions/webgl-compressed-texture-s3tc.html",
+  "extensions/oes-texture-float-with-video.html",
+  "extensions/webgl-depth-texture.html",
+  "glsl/misc/re-compile-re-link.html",
+  "glsl/samplers/glsl-function-texture2dproj.html",
+  "textures/texture-npot-video.html",
+  "textures/gl-pixelstorei.html",
+  "textures/gl-teximage.html",
+  "textures/origin-clean-conformance.html",
+  "textures/tex-sub-image-2d-bad-args.html"
 ]
