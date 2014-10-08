@@ -16,5 +16,12 @@
   "textures/gl-pixelstorei.html",
   "textures/gl-teximage.html",
   "textures/origin-clean-conformance.html",
-  "textures/tex-sub-image-2d-bad-args.html"
+  "textures/tex-sub-image-2d-bad-args.html",
+  "textures/texparameter-test.html",
+  "textures/texture-active-bind.html",
+  "textures/texture-active-bind-2.html",
+  "textures/texture-complete.html",
+  "textures/texture-hd-dpi.html",
+  "textures/texture-npot.html",
+  "textures/texture-transparent-pixels-initialized.html"
 ]
