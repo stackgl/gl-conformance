@@ -1,0 +1,11 @@
+[
+  "textures/texture-npot-video.html",
+  "extensions/oes-texture-float-with-video.html",
+  "context/context-release-upon-reload.html",
+  "context/context-release-with-workers.html",
+  "context/context-lost-restored.html",
+  "context/context-lost.html",
+  "context/context-attribute-preserve-drawing-buffer.html",
+  "canvas/canvas-test.html",
+  "canvas/to-data-url-test.html"
+]

@@ -1,6 +1,6 @@
 gl-conformance
 ==============
-A port of the Khronos ARB WebGL conformance test suite to CommonJS and tape, so that it can be run without a browser.
+A port of the Khronos ARB WebGL conformance test suite to CommonJS and tape, so that it can be run without a browser or from within browserify easily.
 
 # Example usage
 
@@ -35,6 +35,7 @@ Runs the WebGL conformance suite within the given environment.  `environment` is
 
 * `tape` a refernce to a [`tape` object](https://www.npmjs.org/package/tape)
 * `createContext(width,height,opts)` a function which creates a WebGL context from the given parameters
+* `filter(caseName)` an optional filter which returns `true` if the case `caseName` should be run
 
 # Building the test suite
 

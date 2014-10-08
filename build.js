@@ -4,18 +4,23 @@ var fs     = require('fs')
 var path   = require('path')
 var diff   = require('difference')
 
-var BLACKLIST = require('./lib/bad-tests.json')
+var BLACKLIST = require('./lib/blacklist.json')
+var VERSION   = '1.0.2'
+var TEST_DIR  = path.join(__dirname, 'node-test')
 
 //Build conformance test suite
-var scanFiles = require('./lib/scan-files')
-var parseCase = require('./lib/parse-case')
-var genCase   = require('./lib/compile-case')
+var scanFiles     = require('./lib/scan-files')
+var parseCase     = require('./lib/parse-case')
+var genCase       = require('./lib/compile-case')
+var getResources  = require('./lib/load-resources')
 
 var SUITE_DIR = path.join(
   __dirname, 
   'conformance-suites', 
-  '1.0.2', 
+  VERSION, 
   'conformance')
+
+var RESOURCE_DIR = path.join(SUITE_DIR, 'resources')
 
 function fail(err) {
   console.error('crashing', err)
@@ -43,7 +48,7 @@ function writeManifest(fileList) {
 }
 
 function build() {
-  scanFiles(function(err, files) {
+  scanFiles(VERSION, function(err, files) {
     if(err) {
       fail(err)
     } else {
@@ -61,7 +66,7 @@ function build() {
           decCount()
           return
         }
-        parseCase(file, function(err, result) {
+        parseCase(VERSION, file, function(err, result) {
           if(err) {
             fail(err)
           } else {
@@ -69,7 +74,7 @@ function build() {
             if(str) {
               var fileName = result.caseName
               fileList.push(fileName)
-              fs.writeFile(path.join('./node-test', fileName) + '.js' , str) 
+              fs.writeFile(path.join(TEST_DIR, fileName) + '.js' , str) 
             }
             decCount()
           }
@@ -77,9 +82,20 @@ function build() {
       })
     }
   })
+
+  getResources(RESOURCE_DIR, function(err, resources) {
+    if(err) {
+      fail(err)
+    }
+    fs.writeFile(path.join(TEST_DIR, 'resources.json'), JSON.stringify(resources), function(err) {
+      if(err) {
+        fail(err)
+      }
+    })
+  })
 }
 
 //Clear directory and run build
-rimraf('./node-test', function() {
-  mkdirp('./node-test', build)
+rimraf(TEST_DIR, function() {
+  mkdirp(TEST_DIR, build)
 })
