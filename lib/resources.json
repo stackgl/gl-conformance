@@ -13,5 +13,14 @@
   },
   "../resources/desktop-gl-constants.js": {
     "path": "shims/desktop-gl-constants.js"
+  }, 
+  "more/unit.js": {
+    "path": "shims/more-unit.js"
+  },
+  "more/util.js": {
+    "path": "shims/more-util.js"
+  },
+  "resources/glsl-conformance-test.js": {
+    "path": "shims/glsl-conformance-test.js"
   }
 }

@@ -2,7 +2,8 @@ var tape    = require('tape')
 var runTest = require('./run-test')
 
 function filter(caseName) {
-  return true
+  return caseName.indexOf('more') >= 0 && 
+         caseName > 'more_functions_texSubImage2DHTML'
 }
 
 runTest({
