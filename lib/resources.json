@@ -1,26 +1,6 @@
-{
-  "resources/webgl-test.js": {
-    "path": "shims/webgl-test.js"
-  },
-  "resources/webgl-test-utils.js": { 
-    "path": "shims/webgl-test-utils.js"
-  },
-  "../resources/js-test-pre.js": {
-    "path": "shims/js-test-pre.js"
-  },
-  "../resources/js-test-post.js": {
-    "path": "shims/js-test-post.js"
-  },
-  "../resources/desktop-gl-constants.js": {
-    "path": "shims/desktop-gl-constants.js"
-  }, 
-  "more/unit.js": {
-    "path": "shims/more-unit.js"
-  },
-  "more/util.js": {
-    "path": "shims/more-util.js"
-  },
-  "resources/glsl-conformance-test.js": {
-    "path": "shims/glsl-conformance-test.js"
-  }
-}
+[
+  "../resources/*",
+  "resources/*",
+  "ogles/**/*.vert",
+  "ogles/**/*.frag"
+]

@@ -20,8 +20,6 @@ var SUITE_DIR = path.join(
   VERSION, 
   'conformance')
 
-var RESOURCE_DIR = path.join(SUITE_DIR, 'resources')
-
 function fail(err) {
   console.error('crashing', err)
   process.exit(-1)
@@ -70,7 +68,7 @@ function build() {
           if(err) {
             fail(err)
           } else {
-            var str = genCase(result)
+            var str = genCase(SUITE_DIR, result)
             if(str) {
               var fileName = result.caseName
               fileList.push(fileName)
@@ -83,7 +81,7 @@ function build() {
     }
   })
 
-  getResources(RESOURCE_DIR, function(err, resources) {
+  getResources(SUITE_DIR, function(err, resources) {
     if(err) {
       fail(err)
     }
