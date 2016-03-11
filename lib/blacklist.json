@@ -9,6 +9,8 @@
   "context/premultiplyalpha-test.html",
   "extensions/webgl-compressed-texture-s3tc.html",
   "extensions/oes-texture-float-with-video.html",
+  "extensions/oes-texture-float-with-video.html",
+  "extensions/oes-texture-half-float.html",
   "extensions/webgl-depth-texture.html",
   "glsl/misc/re-compile-re-link.html",
   "glsl/samplers/glsl-function-texture2dproj.html",
