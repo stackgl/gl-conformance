@@ -2,7 +2,7 @@
   "resources/webgl-test.js": {
     "path": "shims/webgl-test.js"
   },
-  "resources/webgl-test-utils.js": { 
+  "resources/webgl-test-utils.js": {
     "path": "shims/webgl-test-utils.js"
   },
   "resources/glsl-conformance-test.js": {
@@ -22,7 +22,7 @@
   },
   "../resources/desktop-gl-constants.js": {
     "path": "shims/desktop-gl-constants.js"
-  }, 
+  },
   "more/unit.js": {
     "path": "shims/more-unit.js"
   },
