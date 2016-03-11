@@ -32,6 +32,14 @@
   </xsl:call-template>
 </xsl:template>
 
+<xsl:template match="rejected">
+  <xsl:call-template name="ext_page">
+    <xsl:with-param name="spec_type" select="'Extension Rejected Specification'" />
+    <xsl:with-param name="css" select="concat($basepath,'/resources/Khronos-Rejected.css')" />
+    <xsl:with-param name="spec_status" select="'rejected'" />
+  </xsl:call-template>
+</xsl:template>
+
 <xsl:template match="proposal">
   <xsl:call-template name="ext_page">
     <xsl:with-param name="spec_type" select="'Extension Proposed Specification'" />
@@ -199,7 +207,7 @@
 </xsl:template>
 
 <xsl:template match="core" mode="depends">
-  <p> Promoted to core in <xsl:apply-templates select="."/> specification. <xsl:apply-templates select="glsl" mode="requires" /></p>
+  <p> Promoted to core and no longer available as an extension in <xsl:apply-templates select="."/> specification. <xsl:apply-templates select="glsl" mode="requires" /></p>
 
   <xsl:choose>
     <xsl:when test="count(addendum)!=0">
@@ -379,16 +387,35 @@
     </dl>
   </xsl:if>
 </xsl:template>
-<xsl:template match="type/name" mode="newfun">
-  <em><xsl:value-of select="."/></em>
-</xsl:template>
 <xsl:template match="typedef" mode="newfun">
   <dt class="idl-code">
     <xsl:text>typedef </xsl:text>
     <xsl:apply-templates select="type/node()" mode="newfun" />
+    <xsl:text> </xsl:text>
+    <em><xsl:value-of select="@name" /></em>
+    <xsl:text>;</xsl:text>
   </dt>
   <dd>
     <xsl:apply-templates select="node()[local-name()!='type']" mode="newfun" />
+  </dd>
+</xsl:template>
+<xsl:template match="interface" mode="newfun">
+  <dt class="idl-code">
+	<xsl:if test="@noobject = 'true'">
+	  <xsl:text>[NoInterfaceObject]</xsl:text><br/>
+	</xsl:if>
+    <xsl:text>interface </xsl:text>
+    <em><xsl:value-of select="@name" /></em>
+    <xsl:text> {</xsl:text><br/>
+    <xsl:for-each select="member">
+      <xsl:text>&#160;&#160;</xsl:text>
+      <xsl:value-of select="." /><br/>
+    </xsl:for-each>
+    <xsl:text>};</xsl:text>
+  </dt>
+  <dd>
+    <xsl:apply-templates select="node()[local-name()!='member']"
+                         mode="newfun" />
   </dd>
 </xsl:template>
 <xsl:template match="function" mode="newfun">

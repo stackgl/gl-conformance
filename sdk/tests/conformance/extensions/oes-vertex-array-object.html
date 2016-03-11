@@ -31,8 +31,8 @@
 <meta charset="utf-8">
 <title>WebGL OES_vertex_array_object Conformance Tests</title>
 <link rel="stylesheet" href="../../resources/js-test-style.css"/>
-<script src="../../resources/js-test-pre.js"></script>
-<script src="../resources/webgl-test-utils.js"></script>
+<script src="../../js/js-test-pre.js"></script>
+<script src="../../js/webgl-test-utils.js"></script>
 <!-- comment in the script tag below to test through JS emulation of the extension. -->
 <!--
 <script src="../../../demos/google/resources/OESVertexArrayObject.js"></script>
@@ -393,12 +393,7 @@ function runDrawTests() {
         }
     };
     
-    function readLocation(x, y) {
-        var pixels = new Uint8Array(1 * 1 * 4);
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        return pixels;
-    };
-    function verifyDiagonalPixels(s, expectedInside) {
+    function verifyDiagonalPixels(s, expectedInside, drawDescription) {
         // Tests pixels along a diagonal running from the center of the canvas to the (0, 0) corner.
         // Values on the points list indicate relative position along this diagonal.
         var points = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
@@ -406,23 +401,14 @@ function runDrawTests() {
             var expected = points[n] <= s ? expectedInside : 255;
             var x = Math.round((1 - points[n]) * canvas.width / 2);
             var y = Math.round((1 - points[n]) * canvas.height / 2);
-            var source = readLocation(x, y);
-            if (Math.abs(source[0] - expected) > 2) {
-                return false;
-            }
+            wtu.checkCanvasRect(gl, x, y, 1, 1, [expected, expected, expected, 255],
+                "Drawing " + drawDescription + " should pass", 2);
         }
-        return true;
     };
     function verifyDraw(drawDescription, s, colorsInArray) {
         wtu.clearAndDrawUnitQuad(gl);
-
         var expectedInside = colorsInArray ? 0 : 128;
-
-        if (verifyDiagonalPixels(s, expectedInside)) {
-            testPassed("Drawing " + drawDescription + " passed pixel test");
-        } else {
-            testFailed("Drawing " + drawDescription + " failed pixel test");
-        }
+        verifyDiagonalPixels(s, expectedInside, drawDescription);
     };
     
     // Setup all bindings
@@ -546,8 +532,10 @@ function runDeleteTests() {
     for (var ii = 0; ii < colorBuffers.length; ++ii) {
       gl.deleteBuffer(colorBuffers[ii]);
       gl.deleteBuffer(elementBuffers[ii]);
+      ext.bindVertexArrayOES(vaos[ii]);
+      var boundBuffer = gl.getVertexAttrib(1, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
       // The buffers should still be valid at this point, since it was attached to the VAO
-      if(!gl.isBuffer(colorBuffers[ii])) {
+      if(boundBuffer != colorBuffers[ii]) {
         testFailed("buffer removed even though it is still attached to a VAO");
       }
     }
@@ -661,7 +649,7 @@ function runArrayBufferBindTests() {
 debug("");
 var successfullyParsed = true;
 </script>
-<script src="../../resources/js-test-post.js"></script>
+<script src="../../js/js-test-post.js"></script>
 
 </body>
 </html>

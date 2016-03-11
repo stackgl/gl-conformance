@@ -112,6 +112,11 @@
     font-weight: bold;
   }
 
+  .folderMessage {
+    margin-left: 1em;
+    font-size: 0.9em;
+  }
+
   .pageHeader {
     white-space: nowrap;
   }
@@ -157,19 +162,21 @@
     padding-left: 1em;
   }
 </style>
-<script type="text/javascript" src="resources/webgl-test-harness.js"></script>
+<script type="application/javascript" src="js/webgl-test-harness.js"></script>
 <script>
 "use strict";
-var DEFAULT_CONFORMANCE_TEST_VERSION = "1.0.3 (beta)";
+var DEFAULT_CONFORMANCE_TEST_VERSION = "1.0.4 (beta)";
 
 var OPTIONS = {
   version: DEFAULT_CONFORMANCE_TEST_VERSION,
   frames: 1,
-  allowSkip: 0
+  allowSkip: 0,
+  root: null,
+  quiet: 0
 };
 
 var testVersions = [
-  "1.0.3 (beta)",
+  "1.0.4 (beta)",
   "2.0.0 (beta)"
 ];
 
@@ -179,6 +186,13 @@ function start() {
     if (window.console && window.console.log) {
       window.console.log(msg);
     }
+  }
+
+  function createStylesheet() {
+    var style = document.createElement("style");
+    style.appendChild(document.createTextNode(""));
+    document.head.appendChild(style);
+    return style.sheet;
   }
 
   function create3DContext(canvas, attrs, version) {
@@ -220,6 +234,9 @@ function start() {
     this.totalTimeouts = 0;
     this.totalSkipped = 0;
     this.testIndex = testIndex;
+    this.startTime = 0;
+    this.totalTime = 0;
+    var that = this;
 
     this.elementId = "page" + pageCount++;
     var li = reporter.localDoc.createElement('li');
@@ -229,6 +246,14 @@ function start() {
     var check = reporter.localDoc.createElement('input');
     check.type = 'checkbox';
     check.checked = true;
+    check.onclick = function() {
+      if (this.checked) {
+        that.folder.enableUp_();
+      }
+      else {
+        that.folder.disableUp_();
+      }
+    };
     div.appendChild(check);
     var button = reporter.localDoc.createElement('input');
     button.type = 'button';
@@ -242,7 +267,10 @@ function start() {
     }
     div.appendChild(button);
     var a = reporter.localDoc.createElement('a');
-    a.href = WebGLTestHarnessModule.getURLWithVersion(url, reporter.selectedWebGLVersion);
+    a.href = WebGLTestHarnessModule.getURLWithOptions(url, {
+      webglVersion: reporter.selectedWebGLVersion,
+      quiet: OPTIONS.quiet
+    });
     a.target = "_blank";
     var node = reporter.localDoc.createTextNode(url);
     a.appendChild(node);
@@ -258,6 +286,10 @@ function start() {
     this.elem = li;
     this.check = check;
   };
+
+  Page.prototype.checked = function() {
+    return this.check.checked;
+  }
 
   Page.prototype.addResult = function(msg, success, skipped) {
     ++this.totalTests;
@@ -292,6 +324,7 @@ function start() {
     this.totalTests = 0;
     this.totalSuccessful = 0;
     this.totalTimeouts = 0;
+    this.totalTime = 0;
     // remove previous results.
     while (this.resultElem.hasChildNodes()) {
       this.resultElem.removeChild(this.resultElem.childNodes[0]);
@@ -305,6 +338,7 @@ function start() {
       this.elem.classList.remove('testpageskipped');
       this.elem.classList.remove('testpagefail');
       this.elem.classList.remove('testpagesuccess');
+      this.startTime = Date.now();
     }
 
     return this.check.checked && this.folder.checked();
@@ -315,10 +349,17 @@ function start() {
   };
 
   Page.prototype.finishPage = function(success) {
-    if(this.totalSkipped) {
-      var msg = ' (' + this.totalSkipped + ' of ' + this.totalTests + ' skipped)';
+    var shouldRun = this.check.checked && this.folder.checked();
+    if (shouldRun) {
+      this.totalTime = Date.now() - this.startTime;
     } else {
-      var msg = ' (' + this.totalSuccessful + ' of ' + this.totalTests + ' passed)';
+      this.totalTime = 0;
+    }
+
+    if(this.totalSkipped) {
+      var msg = ' (' + this.totalSkipped + ' of ' + this.totalTests + ' skipped in ' + this.totalTime.toFixed(1) + ' ms)';
+    } else {
+      var msg = ' (' + this.totalSuccessful + ' of ' + this.totalTests + ' passed in ' + this.totalTime.toFixed(1) + ' ms)';
     }
 
     if (success === undefined) {
@@ -335,6 +376,7 @@ function start() {
     }
     this.elem.classList.add(css);
     this.totalsElem.textContent = msg;
+    this.folder.pageFinished(this, success);
   };
 
   Page.prototype.enableTest = function(re) {
@@ -362,6 +404,9 @@ function start() {
     this.pages = [];
     this.items = [];
     this.folder = folder;
+    this.cachedTotalTime = 0;
+    this.cachedTotalSuccessful = 0;
+    this.cachedTotalTests = 0;
     var that = this;
 
     var doc = reporter.localDoc;
@@ -374,6 +419,14 @@ function start() {
     var check = doc.createElement('input');
     check.type = 'checkbox';
     check.checked = true;
+    check.onclick = function() {
+      if (this.checked) {
+        that.enableTest(".*");
+      }
+      else {
+        that.disableTest(".*", true);
+      }
+    };
     div.appendChild(check);
     var button = doc.createElement('input');
     button.type = 'button';
@@ -390,6 +443,11 @@ function start() {
     h.classList.add('folderName');
     h.appendChild(doc.createTextNode(this.displayName));
     div.appendChild(h);
+    var m = doc.createElement('span');
+    m.classList.add('folderMessage');
+    this.msgNode = doc.createTextNode('');
+    m.appendChild(this.msgNode);
+    div.appendChild(m);
     var ul = doc.createElement('ul');
     li.appendChild(div);
     li.appendChild(ul);
@@ -416,11 +474,62 @@ function start() {
     return numChildren + this.pages.length;
   };
 
+  Folder.prototype.totalTime = function() {
+    // Check to see if the cached total time needs to be recomputed
+    if (this.cachedTotalTime == -1) {
+      this.cachedTotalTime = 0;
+      for (var name in this.subFolders) {
+        this.cachedTotalTime += this.subFolders[name].totalTime();
+      }
+      for (var ii = 0; ii < this.pages.length; ++ii) {
+        this.cachedTotalTime += this.pages[ii].totalTime;
+      }
+    }
+    return this.cachedTotalTime;
+  };
+
+  Folder.prototype.totalSuccessful = function() {
+    if (this.cachedTotalSuccessful == -1) {
+      this.cachedTotalSuccessful = 0;
+      for (var name in this.subFolders) {
+        this.cachedTotalSuccessful += this.subFolders[name].totalSuccessful();
+      }
+      for (var ii = 0; ii < this.pages.length; ++ii) {
+        this.cachedTotalSuccessful += this.pages[ii].totalSuccessful;
+      }
+    }
+    return this.cachedTotalSuccessful;
+  };
+
+  Folder.prototype.totalTests = function() {
+    if (this.cachedTotalTests == -1) {
+      this.cachedTotalTests = 0;
+      for (var name in this.subFolders) {
+        this.cachedTotalTests += this.subFolders[name].totalTests();
+      }
+      for (var ii = 0; ii < this.pages.length; ++ii) {
+        this.cachedTotalTests += this.pages[ii].totalTests;
+      }
+    }
+    return this.cachedTotalTests;
+  };
+
   Folder.prototype.run = function() {
+    this.msgNode.textContent = '';
     var firstTestIndex = this.firstTestIndex();
     var count = this.numChildren();
     log("run tests: " + firstTestIndex + " to " + (firstTestIndex + count - 1))
     testHarness.runTests({start: firstTestIndex, count: count});
+  };
+
+  Folder.prototype.pageFinished = function(page, success) {
+    this.cachedTotalTime = -1;
+    this.cachedTotalSuccessful = -1;
+    this.cachedTotalTests = -1;
+    this.msgNode.textContent = ' (' + this.totalSuccessful() + ' of ' + this.totalTests() + ' passed in ' + (this.totalTime() / 1000).toFixed(2) + ' seconds)';
+    if (this.folder) {
+      this.folder.pageFinished(page, success);
+    }
   };
 
   Folder.prototype.getSubFolder = function(name) {
@@ -471,6 +580,24 @@ function start() {
     var parent = this.folder;
     if (parent) {
       parent.enableUp_();
+    }
+  }
+
+  Folder.prototype.disableUp_ = function() {
+    var checked = false;
+    for (var name in this.subFolders) {
+      checked = this.subFolders[name].checked();
+      if (checked) {
+        break;
+      }
+    }
+    for (var ii = 0; ii < this.pages.length && checked == false; ++ii) {
+      checked = this.pages[ii].checked();
+    }
+    this.check.checked = checked;
+    var parent = this.folder;
+    if (parent) {
+      parent.disableUp_();
     }
   }
 
@@ -525,6 +652,7 @@ function start() {
     this.root = new Folder(this, null, 0, "all");
     this.resultElem.appendChild(this.root.elem);
     this.callbacks = { };
+    this.startTime = 0;
 
     if (ctx) {
       this.contextInfo["VENDOR"] = ctx.getParameter(ctx.VENDOR);
@@ -601,6 +729,11 @@ function start() {
   Reporter.prototype.finishPage = function(url, success) {
     var page = this.pagesByURL[url];
     page.finishPage(success);
+    if (OPTIONS.dumpShaders == 1) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', "/finishIndividualTest", true);
+      xhr.send(null);
+    }
   };
 
   Reporter.prototype.displayFinalResults = function(msg, success) {
@@ -609,6 +742,7 @@ function start() {
       var totalSuccessful = 0;
       var totalTimeouts = 0;
       var totalSkipped = 0;
+      var totalTime = Date.now() - this.startTime;
       for (var url in this.pagesByURL) {
         var page = this.pagesByURL[url];
         totalTests += page.totalTests;
@@ -640,6 +774,7 @@ function start() {
       tx += "\n";
       tx += "-------------------\n\n";
       tx += "Test Summary (" + totalTests + " total tests):\n";
+      tx += "Tests ran in " + (totalTime / 1000.0).toFixed(2) + " seconds\n";
       tx += "Tests PASSED: " + totalSuccessful + "\n";
       tx += "Tests FAILED: " + (totalTests - totalSuccessful - totalSkipped) + "\n";
       tx += "Tests TIMED OUT: " + totalTimeouts + "\n";
@@ -692,6 +827,7 @@ function start() {
   };
 
   Reporter.prototype.postTestStartToServer = function(resultText) {
+    this.startTime = Date.now();
     if(OPTIONS.postResults == undefined || OPTIONS.postResults == 0) {
       return;
     }
@@ -878,10 +1014,15 @@ function start() {
   };
   var iframes = makeIFrames();
 
+  var testPath = "00_test_list.txt";
+  if (OPTIONS.root) {
+    testPath = OPTIONS.root + "/" + testPath;
+  }
+
   var reporter = new Reporter(iframes);
   var testHarness = new WebGLTestHarnessModule.TestHarness(
       iframes,
-      '00_test_list.txt',
+      testPath,
       function(type, url, msg, success, skipped) {
         return reporter.reportFunc(type, url, msg, success, skipped);
       },
@@ -922,6 +1063,19 @@ function start() {
     autoScrollEnabled = autoScrollCheckbox.checked;
     autoScroll = autoScrollEnabled;
   };
+
+  var hidePassedSheet = createStylesheet();
+  var hidePassedCheckbox = document.getElementById("hidePassedCheckbox");
+  hidePassedCheckbox.checked = false;
+  hidePassedCheckbox.onclick = function() {
+    var hidePassedTests = hidePassedCheckbox.checked;
+    if (hidePassedTests) {
+        hidePassedSheet.insertRule(".testpagesuccess { display: none; }", 0);
+    } else {
+        hidePassedSheet.deleteRule(0);
+    }
+  };
+
   var textbutton = document.getElementById("showTextSummary");
   textbutton.onclick = function() {
     log("click");
@@ -987,6 +1141,9 @@ function start() {
               <br/>
               <input type="checkbox" id="autoScrollCheckbox"/>
               <label for="autoScrollCheckbox">auto scroll</label>
+              <br/>
+              <input type="checkbox" id="hidePassedCheckbox"/>
+              <label for="hidePassedCheckbox">hide passed tests</label>
               <br/>
               <input type="button" style="visibility: hidden;" value="display text summary" id="showTextSummary"/>
               <div id="nowebgl" class="nowebgl" style="display: none;">
