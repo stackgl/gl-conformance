@@ -4,7 +4,7 @@ var fs = require('fs')
 var path = require('path')
 
 var BLACKLIST = require('./lib/blacklist.json')
-var VERSION = '1.0.2'
+var VERSION = '1.0.3'
 var TEST_DIR = path.join(__dirname, 'node-test')
 
 // Build conformance test suite
