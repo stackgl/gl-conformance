@@ -1,6 +1,6 @@
 {
   "name": "gl-conformance",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Khronos WebGL conformance test suite",
   "main": "run-test.js",
   "directories": {
