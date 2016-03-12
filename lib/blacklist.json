@@ -26,6 +26,8 @@
   "textures/texture-hd-dpi.html",
   "textures/texture-npot.html",
   "textures/texture-transparent-pixels-initialized.html",
+  "textures/tex-image-canvas-corruption.html",
+  "textures/texture-upload-size.html",
   "more/functions/readPixelsBadArgs.html",
   "more/functions/texImage2DHTML.html",
   "more/functions/texSubImage2DHTML.html"
