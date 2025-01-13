@@ -198,16 +198,12 @@ goog.scope(function() {
      * @return {string}
      */
     glsShaderExecUtil.generateEmptyFragmentSource = function() {
-        /** @type {boolean} */ var customOut = true;
         /** @type {string} */ var src;
 
         src = '#version 300 es\n';
-
-        // \todo [2013-08-05 pyry] Do we need one dummy output?
-
+        src += 'out lowp vec4 color;\n';
         src += 'void main (void)\n{\n';
-        if (!customOut)
-            src += ' gl.FragColor = vec4(0.0);\n';
+        src += ' color = vec4(0.0);\n';
         src += '}\n';
 
         return src;
@@ -356,8 +352,13 @@ goog.scope(function() {
      */
     glsShaderExecUtil.getTFVaryings = function(outputs) {
         var names = [];
-        for (var i = 0; i < outputs.length; i++)
-            names.push(outputs[i].name);
+        for (var i = 0; i < outputs.length; i++) {
+            if (gluShaderUtil.isDataTypeBoolOrBVec(outputs[i].varType.getBasicType())) {
+                names.push('o_' + outputs[i].name);
+            } else {
+                names.push(outputs[i].name);
+            }
+        }
         return new gluShaderProgram.TransformFeedbackVaryings(names);
     };
 
@@ -441,7 +442,11 @@ goog.scope(function() {
             else if (gluShaderUtil.isDataTypeMatrix(basicType)) {
                 /** @type {number} */ var numRows = gluShaderUtil.getDataTypeMatrixNumRows(basicType);
                 /** @type {number} */ var numCols = gluShaderUtil.getDataTypeMatrixNumColumns(basicType);
-                /** @type {number} */ var stride = numRows * numCols * 4;//sizeof(float);
+                // A matrix consists of several (column-major) vectors. A buffer is created for
+                // every vector in gluDrawUtil.draw() below. Data in every buffer will be tightly
+                // packed. So the stride should be 0. This is different from the code in native
+                // deqp, which use only one buffer for a matrix, the data is interleaved.
+                /** @type {number} */ var stride = 0;
 
                 for (var colNdx = 0; colNdx < numCols; ++colNdx)
                     vertexArrays.push(gluDrawUtil.newFloatColumnVertexArrayBinding(symbol.name,
@@ -471,7 +476,7 @@ goog.scope(function() {
 
         // Read back data.
         var result = new ArrayBuffer(outputBufferStride * numValues);
-        gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, result);
+        gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, new Uint8Array(result));
         /** @type {number} */ var curOffset = 0; // Offset in buffer in bytes.
 
         for (var outputNdx = 0; outputNdx < this.m_outputs.length; outputNdx++) {
@@ -608,32 +613,36 @@ goog.scope(function() {
         vertexArrays.push(gluDrawUtil.newFloatVertexArrayBinding('a_position', 2, numValues, 0, positions));
 
         for (var inputNdx = 0; inputNdx < this.m_inputs.length; inputNdx++) {
-        symbol = this.m_inputs[inputNdx];
-        var attribName = 'a_' + symbol.name;
-        var ptr = inputs[inputNdx];
-        /** @type {gluShaderUtil.DataType} */ var basicType = symbol.varType.getBasicType();
-        /** @type {number} */ var vecSize = gluShaderUtil.getDataTypeScalarSize(basicType);
+            symbol = this.m_inputs[inputNdx];
+            var attribName = 'a_' + symbol.name;
+            var ptr = inputs[inputNdx];
+            /** @type {gluShaderUtil.DataType} */ var basicType = symbol.varType.getBasicType();
+            /** @type {number} */ var vecSize = gluShaderUtil.getDataTypeScalarSize(basicType);
 
-        if (gluShaderUtil.isDataTypeFloatOrVec(basicType))
-            vertexArrays.push(gluDrawUtil.newFloatVertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
-        else if (gluShaderUtil.isDataTypeIntOrIVec(basicType))
-            vertexArrays.push(gluDrawUtil.newInt32VertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
-        else if (gluShaderUtil.isDataTypeUintOrUVec(basicType))
-            vertexArrays.push(gluDrawUtil.newUint32VertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
-        else if (gluShaderUtil.isDataTypeMatrix(basicType)) {
-            var numRows = gluShaderUtil.getDataTypeMatrixNumRows(basicType);
-            var numCols = gluShaderUtil.getDataTypeMatrixNumColumns(basicType);
-            var stride = numRows * numCols * 4;
+            if (gluShaderUtil.isDataTypeFloatOrVec(basicType))
+                vertexArrays.push(gluDrawUtil.newFloatVertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
+            else if (gluShaderUtil.isDataTypeIntOrIVec(basicType))
+                vertexArrays.push(gluDrawUtil.newInt32VertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
+            else if (gluShaderUtil.isDataTypeUintOrUVec(basicType))
+                vertexArrays.push(gluDrawUtil.newUint32VertexArrayBinding(attribName, vecSize, numValues, 0, ptr));
+            else if (gluShaderUtil.isDataTypeMatrix(basicType)) {
+                var numRows = gluShaderUtil.getDataTypeMatrixNumRows(basicType);
+                var numCols = gluShaderUtil.getDataTypeMatrixNumColumns(basicType);
+                // A matrix consists of several (column-major) vectors. A buffer is created for
+                // every vector in gluDrawUtil.draw() below. Data in every buffer will be tightly
+                // packed. So the stride should be 0. This is different from the code in native
+                // deqp, which use only one buffer for a matrix, the data is interleaved.
+                var stride = 0;
 
-            for (var colNdx = 0; colNdx < numCols; ++colNdx)
-                vertexArrays.push(gluDrawUtil.newFloatColumnVertexArrayBinding(attribName,
-                    colNdx,
-                    numRows,
-                    numValues,
-                    stride,
-                    glsShaderExecUtil.getColumn(ptr, colNdx, numRows * numValues)));
-        } else
-            DE_ASSERT(false);
+                for (var colNdx = 0; colNdx < numCols; ++colNdx)
+                    vertexArrays.push(gluDrawUtil.newFloatColumnVertexArrayBinding(attribName,
+                       colNdx,
+                       numRows,
+                       numValues,
+                       stride,
+                       glsShaderExecUtil.getColumn(ptr, colNdx, numRows * numValues)));
+            } else
+                DE_ASSERT(false);
         }
 
         // Construct framebuffer.
@@ -680,10 +689,11 @@ goog.scope(function() {
                 gl.readBuffer(gl.COLOR_ATTACHMENT0 + outLocation + locNdx);
                 gl.readPixels(0, 0, framebufferW, framebufferH, transferFormat.format, transferFormat.dataType, tmpBuf.getAccess().getDataPtr());
 
-                if (outSize == 4 && outNumLocs == 1)
+                if (outSize == 4 && outNumLocs == 1) {
                     outputs[outNdx] = new Uint8Array(tmpBuf.getAccess().getBuffer());
-                else {
-                    outputs[outNdx] = new Uint32Array(numValues * outVecSize);
+                } else {
+                    if (locNdx == 0)
+                        outputs[outNdx] = new Uint32Array(numValues * outVecSize);
                     var srcPtr = new Uint32Array(tmpBuf.getAccess().getBuffer());
                     for (var valNdx = 0; valNdx < numValues; valNdx++) {
                         var srcOffset = valNdx * 4;

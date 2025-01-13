@@ -1274,7 +1274,7 @@ var create3DContext = function(opt_canvas, opt_attributes, opt_version) {
   var names;
   switch (opt_version) {
     case 2:
-      names = ["webgl2", "experimental-webgl2"]; break;
+      names = ["webgl2"]; break;
     default:
       names = ["webgl", "experimental-webgl"]; break;
   }
@@ -1352,8 +1352,34 @@ var shouldGenerateGLError = function(gl, glErrors, evalStr) {
   }
   if (exception) {
     testFailed(evalStr + " threw exception " + exception);
+    return -1;
   } else {
-    glErrorShouldBe(gl, glErrors, "after evaluating: " + evalStr);
+    return glErrorShouldBe(gl, glErrors, "after evaluating: " + evalStr);
+  }
+};
+
+/**
+ * Tests that an evaluated expression either throws an exception or generates a specific GL error.
+ * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
+ * @param {number|Array.<number>} glErrors The expected gl error or an array of expected errors.
+ * @param {string} evalStr The string to evaluate.
+ * @param {string} opt_msg The optional message to display.
+ */
+var shouldThrowOrGenerateGLError = function(gl, glErrors, evalStr, opt_msg) {
+  var exception;
+  try {
+    eval(evalStr);
+  } catch (e) {
+    exception = e;
+  }
+  if (exception) {
+    testPassed(evalStr + " threw exception " + exception);
+    return 0;
+  } else {
+    if (!opt_msg) {
+      opt_msg = "after evaluating: " + evalStr;
+    }
+    return glErrorShouldBe(gl, glErrors, opt_msg);
   }
 };
 
@@ -1382,13 +1408,14 @@ var glErrorShouldBe = function(gl, glErrors, opt_msg) {
     var msg = "getError was " + ((glErrors.length > 1) ? "one of: " : "expected value: ");
     testPassed(msg + expected + " : " + opt_msg);
   }
+  return err;
 };
 
 /**
  * Links a WebGL program, throws if there are errors.
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
  * @param {!WebGLProgram} program The WebGLProgram to link.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  */
 var linkProgram = function(gl, program, opt_errorCallback) {
   var errFn = opt_errorCallback || testFailed;
@@ -1601,8 +1628,8 @@ var readFileList = function(url) {
  * Loads a shader.
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
  * @param {string} shaderSource The shader source.
- * @param {number} shaderType The type of shader. 
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {number} shaderType The type of shader.
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @param {boolean} opt_logShaders Whether to log shader source.
  * @param {string} opt_shaderLabel Label that identifies the shader source in
  *     the log.
@@ -1660,7 +1687,7 @@ var loadShader = function(
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
  * @param {file} file The URL of the shader source.
  * @param {number} type The type of shader.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @param {boolean} opt_logShaders Whether to log shader source.
  * @return {!WebGLShader} The created shader.
  */
@@ -1690,7 +1717,7 @@ var getScript = function(scriptId) {
  * @param {string} scriptId The id of the script tag.
  * @param {number} opt_shaderType The type of shader. If not passed in it will
  *     be derived from the type of the script tag.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @param {boolean} opt_logShaders Whether to log shader source.
  * @return {!WebGLShader} The created shader.
  */
@@ -1733,7 +1760,7 @@ var loadStandardProgram = function(gl) {
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
  * @param {string} vertexShaderPath The URL of the vertex shader.
  * @param {string} fragmentShaderPath The URL of the fragment shader.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @return {!WebGLProgram} The created program.
  */
 var loadProgramFromFile = function(
@@ -1765,7 +1792,7 @@ var loadProgramFromFile = function(
  *        vertex shader.
  * @param {string} fragmentScriptId The id of the script tag that contains the
  *        fragment shader.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @return {!WebGLProgram} The created program.
  */
 var loadProgramFromScript = function loadProgramFromScript(
@@ -1806,7 +1833,7 @@ var createProgram = function(gl, vertexShader, fragmentShader, opt_errorCallback
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
  * @param {string} vertexShader The vertex shader source.
  * @param {string} fragmentShader The fragment shader source.
- * @param {function(string): void) opt_errorCallback callback for errors. 
+ * @param {function(string): void) opt_errorCallback callback for errors.
  * @param {boolean} opt_logShaders Whether to log shader source.
  * @return {!WebGLProgram} The created program.
  */
@@ -2358,7 +2385,7 @@ var _requestAnimFrame;
  */
 var requestAnimFrame = function(callback) {
   if (!_requestAnimFrame) {
-    _requestAnimFrame = getPrefixedProperty(window, "requestAnimationFrame") || 
+    _requestAnimFrame = getPrefixedProperty(window, "requestAnimationFrame") ||
       function(callback, element) {
         return window.setTimeout(callback, 1000 / 70);
       };
@@ -2378,6 +2405,14 @@ var cancelAnimFrame = function(request) {
       window.clearTimeout;
   }
   _cancelAnimFrame.call(window, request);
+};
+
+/**
+ * Provides video.requestVideoFrameCallback in a cross browser way.
+ * Returns a property, or undefined if unsuported.
+ */
+var getRequestVidFrameCallback = function() {
+  return HTMLVideoElement.prototype["requestVideoFrameCallback"];
 };
 
 /**
@@ -2501,6 +2536,35 @@ var waitForComposite = function(callback) {
   countDown();
 };
 
+var setZeroTimeout = (function() {
+  // See https://dbaron.org/log/20100309-faster-timeouts
+
+  var timeouts = [];
+  var messageName = "zero-timeout-message";
+
+  // Like setTimeout, but only takes a function argument.  There's
+  // no time argument (always zero) and no arguments (you have to
+  // use a closure).
+  function setZeroTimeout(fn) {
+      timeouts.push(fn);
+      window.postMessage(messageName, "*");
+  }
+
+  function handleMessage(event) {
+      if (event.source == window && event.data == messageName) {
+          event.stopPropagation();
+          if (timeouts.length > 0) {
+              var fn = timeouts.shift();
+              fn();
+          }
+      }
+  }
+
+  window.addEventListener("message", handleMessage, true);
+
+  return setZeroTimeout;
+})();
+
 /**
  * Runs an array of functions, yielding to the browser between each step.
  * If you want to know when all the steps are finished add a last step.
@@ -2530,36 +2594,52 @@ var runSteps = function(steps) {
  *        video is ready.
  */
 var startPlayingAndWaitForVideo = function(video, callback) {
-  var gotPlaying = false;
-  var gotTimeUpdate = false;
+  if (video.error) {
+    testFailed('Video failed to load: ' + video.error);
+    return;
+  }
+  video.addEventListener(
+      'error', e => { testFailed('Video playback failed: ' + e.message); },
+      true);
 
-  var maybeCallCallback = function() {
-    if (gotPlaying && gotTimeUpdate && callback) {
-      callback(video);
-      callback = undefined;
-      video.removeEventListener('playing', playingListener, true);
-      video.removeEventListener('timeupdate', timeupdateListener, true);
-    }
-  };
+  var rvfc = getRequestVidFrameCallback();
+  if (rvfc === undefined) {
+    var gotPlaying = false;
+    var gotTimeUpdate = false;
 
-  var playingListener = function() {
-    gotPlaying = true;
-    maybeCallCallback();
-  };
+    var maybeCallCallback = function() {
+      if (gotPlaying && gotTimeUpdate && callback) {
+        callback(video);
+        callback = undefined;
+        video.removeEventListener('playing', playingListener, true);
+        video.removeEventListener('timeupdate', timeupdateListener, true);
+      }
+    };
 
-  var timeupdateListener = function() {
-    // Checking to make sure the current time has advanced beyond
-    // the start time seems to be a reliable heuristic that the
-    // video element has data that can be consumed.
-    if (video.currentTime > 0.0) {
-      gotTimeUpdate = true;
+    var playingListener = function() {
+      gotPlaying = true;
       maybeCallCallback();
-    }
-  };
+    };
 
-  video.addEventListener('playing', playingListener, true);
-  video.addEventListener('timeupdate', timeupdateListener, true);
+    var timeupdateListener = function() {
+      // Checking to make sure the current time has advanced beyond
+      // the start time seems to be a reliable heuristic that the
+      // video element has data that can be consumed.
+      if (video.currentTime > 0.0) {
+        gotTimeUpdate = true;
+        maybeCallCallback();
+      }
+    };
+
+    video.addEventListener('playing', playingListener, true);
+    video.addEventListener('timeupdate', timeupdateListener, true);
+  } else {
+    // Calls video.requestVideoFrameCallback(_ => { callback(video) })
+    rvfc.call(video, _ => { callback(video) });
+  }
+
   video.loop = true;
+  video.muted = true;
   video.play();
 };
 
@@ -2660,6 +2740,7 @@ return {
   createProgram: createProgram,
   clearAndDrawUnitQuad: clearAndDrawUnitQuad,
   clearAndDrawIndexedQuad: clearAndDrawIndexedQuad,
+  dispatchTask: setZeroTimeout,
   drawUnitQuad: drawUnitQuad,
   drawIndexedQuad: drawIndexedQuad,
   drawUByteColorQuad: drawUByteColorQuad,
@@ -2731,6 +2812,7 @@ return {
   startPlayingAndWaitForVideo: startPlayingAndWaitForVideo,
   startsWith: startsWith,
   shouldGenerateGLError: shouldGenerateGLError,
+  shouldThrowOrGenerateGLError: shouldThrowOrGenerateGLError,
   readFile: readFile,
   readFileList: readFileList,
   replaceParams: replaceParams,

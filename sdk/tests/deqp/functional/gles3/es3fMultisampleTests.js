@@ -212,6 +212,51 @@ goog.scope(function() {
     /** Copy the constructor */
     es3fMultisampleTests.MultisampleCase.prototype.constructor = es3fMultisampleTests.MultisampleCase;
 
+    /* Rest states */
+    es3fMultisampleTests.MultisampleCase.prototype.deinit = function() {
+        gl.colorMask(true, true, true, true);
+        gl.depthMask(true);
+
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clearDepth(1.0);
+        gl.clearStencil(0);
+
+        gl.disable(gl.STENCIL_TEST);
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.BLEND)
+        gl.disable(gl.SAMPLE_COVERAGE);
+        gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE);
+
+        if (this.m_program) {
+            gl.deleteProgram(this.m_program.getProgram());
+            this.m_program = null;
+        }
+        if (this.m_msColorRbo) {
+          gl.deleteRenderbuffer(this.m_msColorRbo);
+          this.m_msColorRbo = null;
+        }
+        if (this.m_msDepthStencilRbo) {
+          gl.deleteRenderbuffer(this.m_msDepthStencilRbo);
+          this.m_msDepthStencilRbo = null;
+        }
+        if (this.m_resolveColorRbo) {
+          gl.deleteRenderbuffer(this.m_resolveColorRbo);
+          this.m_resolveColorRbo = null;
+        }
+
+        if (this.m_msFbo) {
+          gl.deleteFramebuffer(this.m_msFbo);
+          this.m_msFbo = null;
+        }
+        if (this.m_resolveFbo) {
+          gl.deleteFramebuffer(this.m_resolveFbo);
+          this.m_resolveFbo = null;
+        }
+
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
     /**
      * @protected
      * @param  {Array<number>} p0
@@ -424,18 +469,25 @@ goog.scope(function() {
             '    o_color = v_color;\n' +
             '}\n';
 
-
-
         var numSamples = /** @type {number} */  (gl.getParameter(gl.SAMPLES));
-        if (!this.m_fboParams.useFbo && numSamples <= 1)
-            throw new Error('No multisample buffers');
+        if (!this.m_fboParams.useFbo && numSamples <= 1) {
+            var msg = 'No multisample buffers';
+            checkMessage(false, msg);
+            return false;
+        }
 
         if (this.m_fboParams.useFbo) {
             if (this.m_fboParams.numSamples > 0)
                 this.m_numSamples = this.m_fboParams.numSamples;
             else {
                 bufferedLogToConsole('Querying maximum number of samples for ' + gluStrUtil.getPixelFormatName(gl.RGBA8) + ' with gl.getInternalformatParameter()');
-                this.m_numSamples = /** @type {number} */ (gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA8, gl.SAMPLES).length);
+                var supportedSampleCountArray = /** @type {Int32Array} */ (gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA8, gl.SAMPLES));
+                if (supportedSampleCountArray.length == 0) {
+                    var msg = 'No supported sample counts';
+                    checkMessage(false, msg);
+                    return false;
+                }
+                this.m_numSamples = supportedSampleCountArray[0];
             }
 
             bufferedLogToConsole('Using FBO of size (' + this.m_renderWidth + ', ' + this.m_renderHeight + ') with ' + this.m_numSamples + ' samples');
@@ -470,19 +522,17 @@ goog.scope(function() {
             this.m_msColorRbo = gl.createRenderbuffer();
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.m_msColorRbo);
 
-            // If glRenderbufferStorageMultisample() fails, check if it's because of a too high sample count.
-            // \note We don't do the check until now because some implementations can't handle the gl.SAMPLES query with glGetInternalformativ(),
-            //         and we don't want that to be the cause of test case failure.
-            try {
-                gl.renderbufferStorageMultisample(gl.RENDERBUFFER, this.m_numSamples, gl.RGBA8, this.m_renderWidth, this.m_renderHeight);
+            /** @type {Int32Array} */ var supportedSampleCountArray = /** @type {Int32Array} */ (gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA8, gl.SAMPLES));
+            var maxSampleCount = supportedSampleCountArray[0];
+            if (maxSampleCount < this.m_numSamples) {
+                bufferedLogToConsole('skipping test: ' + this.m_numSamples + ' samples not supported; max is ' + maxSampleCount);
+                return false;
             }
-            catch (e) {
-                /** @type {Int32Array} */ var maxSampleCount = /** @type {Int32Array} */ (gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA8, gl.SAMPLES));
-                if (maxSampleCount.length < this.m_numSamples)
-                    throw new Error('Maximum sample count returned by gl.getInternalformatParameter() for ' + gluStrUtil.getPixelFormatName(gl.RGBA8) + ' is only ' + maxSampleCount.length);
-                else
-                    throw new Error('Unspecified error.');
-            }
+
+            assertMsgOptions(gl.getError() === gl.NO_ERROR, 'should be no GL error before renderbufferStorageMultisample');
+            gl.renderbufferStorageMultisample(gl.RENDERBUFFER, this.m_numSamples, gl.RGBA8, this.m_renderWidth, this.m_renderHeight);
+            assertMsgOptions(gl.getError() === gl.NO_ERROR, 'should be no GL error after renderbufferStorageMultisample');
+
 
             if (this.m_fboParams.useDepth || this.m_fboParams.useStencil) {
                 // Setup ms depth & stencil RBO.
@@ -515,6 +565,7 @@ goog.scope(function() {
 
         this.m_viewportSize = Math.min(this.m_desiredViewportSize, this.m_renderWidth, this.m_renderHeight);
         this.randomizeViewport();
+        return true;
     };
 
     /**
@@ -550,7 +601,6 @@ goog.scope(function() {
      * @return {tcuTestCase.IterateResult}
      */
     es3fMultisampleTests.NumSamplesCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
         this.randomizeViewport();
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -560,12 +610,16 @@ goog.scope(function() {
 
         // Read and log rendered image.
 
-        renderedImg = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImg = this.readImage();
         tcuLogImage.logImage('RenderedImage', 'Rendered image', renderedImg.getAccess());
 
         // Detect new, previously unseen colors from image.
 
         /** @type {number} */ var requiredNumDistinctColors = this.m_numSamples + 1;
+
+        // If the number of samples is high (64 or more), we need to lower the threshold for detecting unique colors, otherwise two expected unique colors would be treated as the same color.
+        var threshold = Math.min(3, Math.floor(255 / this.m_numSamples) - 1);
+        var thresholdRGBA = tcuRGBA.newRGBAComponents(threshold, threshold, threshold, threshold);
 
         for (var y = 0; y < renderedImg.getHeight() && this.m_detectedColors.length < requiredNumDistinctColors; y++)
         for (var x = 0; x < renderedImg.getWidth() && this.m_detectedColors.length < requiredNumDistinctColors; x++) {
@@ -573,7 +627,7 @@ goog.scope(function() {
 
             /** @type {number} */ var i;
             for (i = 0; i < this.m_detectedColors.length; i++) {
-                if (tcuRGBA.compareThreshold(color, this.m_detectedColors[i], tcuRGBA.newRGBAComponents(3, 3, 3, 3)))
+                if (tcuRGBA.compareThreshold(color, this.m_detectedColors[i], thresholdRGBA))
                     break;
             }
 
@@ -723,7 +777,10 @@ goog.scope(function() {
     };
 
     es3fMultisampleTests.CommonEdgeCase.prototype.init = function() {
-        es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        var inited = es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        if (!inited) {
+            return false;
+        }
 
         if (this.m_caseType === es3fMultisampleTests.CommonEdgeCase.CaseType.SMALL_QUADS) {
             // Check for a big enough viewport. With too small viewports the test case can't analyze the resulting image well enough.
@@ -744,7 +801,6 @@ goog.scope(function() {
      * @return {tcuTestCase.IterateResult}
      */
     es3fMultisampleTests.CommonEdgeCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
         /** @type {tcuSurface.Surface} */ var errorImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
 
         this.randomizeViewport();
@@ -937,7 +993,7 @@ goog.scope(function() {
 
         // Read pixels and check unicolored regions.
 
-        renderedImg = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImg = this.readImage();
 
         errorImg.getAccess().clear([0.0, 1.0, 0.0, 1.0]);
         tcuLogImage.logImage('RenderedImage', 'Rendered image', renderedImg.getAccess());
@@ -1005,7 +1061,10 @@ goog.scope(function() {
     es3fMultisampleTests.SampleDepthCase.prototype.constructor = es3fMultisampleTests.SampleDepthCase;
 
     es3fMultisampleTests.SampleDepthCase.prototype.init = function() {
-        es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        var inited = es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        if (!inited) {
+            return false;
+        }
 
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LESS);
@@ -1062,9 +1121,6 @@ goog.scope(function() {
      * @return {tcuTestCase.IterateResult}
      */
     es3fMultisampleTests.SampleStencilCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImgFirst = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-        /** @type {tcuSurface.Surface} */ var renderedImgSecond = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-
         this.randomizeViewport();
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -1088,7 +1144,7 @@ goog.scope(function() {
                 [1.0, 1.0, 1.0, 1.0]);
         }
 
-        renderedImgFirst = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImgFirst = this.readImage();
         tcuLogImage.logImage('RenderedImgFirst', 'First image rendered', renderedImgFirst.getAccess());
         bufferedLogToConsole('Clearing color buffer to black');
 
@@ -1098,8 +1154,7 @@ goog.scope(function() {
 
         bufferedLogToConsole('Checking that color buffer was actually cleared to black');
 
-        /** @type {tcuSurface.Surface} */ var clearedImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-        clearedImg = this.readImage();
+        /** @type {tcuSurface.Surface} */ var clearedImg = this.readImage();
 
         for (var y = 0; y < clearedImg.getHeight(); y++)
         for (var x = 0; x < clearedImg.getWidth(); x++) {
@@ -1121,7 +1176,7 @@ goog.scope(function() {
             [1.0, 1.0],
             [1.0, 1.0, 1.0, 1.0]);
 
-        renderedImgSecond = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImgSecond = this.readImage();
         tcuLogImage.logImage('RenderedImgSecond', 'Second image rendered', renderedImgSecond.getAccess());
         /** @type {boolean} */
         var passed = tcuImageCompare.pixelThresholdCompare(
@@ -1183,7 +1238,10 @@ goog.scope(function() {
     };
 
     es3fMultisampleTests.MaskProportionalityCase.prototype.init = function() {
-        es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        var inited = es3fMultisampleTests.MultisampleCase.prototype.init.call(this);
+        if (!inited) {
+            return false;
+        }
 
         if (this.m_type == es3fMultisampleTests.MaskProportionalityCase.CaseType.ALPHA_TO_COVERAGE) {
             gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
@@ -1208,9 +1266,6 @@ goog.scope(function() {
      * @return {tcuTestCase.IterateResult}
      */
     es3fMultisampleTests.MaskProportionalityCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-        /** @type {number} */ var numPixels = renderedImg.getWidth() * renderedImg.getHeight();
-
         bufferedLogToConsole('Clearing color to black');
         gl.colorMask(true, true, true, true);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -1248,9 +1303,9 @@ goog.scope(function() {
 
         this.renderQuad_WithColor(pt0, pt1, pt2, pt3, quadColor);
 
-        // Read ang log image.
-
-        renderedImg = this.readImage();
+        // Read and log image.
+        /** @type {tcuSurface.Surface} */ var renderedImg = this.readImage();
+        /** @type {number} */ var numPixels = renderedImg.getWidth() * renderedImg.getHeight();
 
         tcuLogImage.logImage('RenderedImage', 'Rendered image', renderedImg.getAccess());
         // Compute average red component in rendered image.
@@ -1354,8 +1409,6 @@ goog.scope(function() {
      * @return {tcuTestCase.IterateResult}
      */
     es3fMultisampleTests.MaskConstancyCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImg = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-
         this.randomizeViewport();
 
         bufferedLogToConsole('Clearing color to black');
@@ -1408,7 +1461,7 @@ goog.scope(function() {
             }
         }
 
-        renderedImg = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImg = this.readImage();
 
         tcuLogImage.logImage('RenderedImage', 'Rendered image', renderedImg.getAccess());
         for (var y = 0; y < renderedImg.getHeight(); y++)
@@ -1484,9 +1537,6 @@ goog.scope(function() {
     * @return {tcuTestCase.IterateResult}
     */
     es3fMultisampleTests.CoverageMaskInvertCase.prototype.iterate = function() {
-        /** @type {tcuSurface.Surface} */ var renderedImgNoSampleCoverage = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-        /** @type {tcuSurface.Surface} */ var renderedImgSampleCoverage = new tcuSurface.Surface(this.m_viewportSize, this.m_viewportSize);
-
         this.randomizeViewport();
 
         gl.enable(gl.BLEND);
@@ -1499,7 +1549,7 @@ goog.scope(function() {
         gl.clear(gl.COLOR_BUFFER_BIT);
         bufferedLogToConsole('Drawing the pattern with gl.SAMPLE_COVERAGE disabled');
         this.drawPattern(false);
-        renderedImgNoSampleCoverage = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImgNoSampleCoverage = this.readImage();
 
         tcuLogImage.logImage('RenderedImageNoSampleCoverage', 'Rendered image with gl.SAMPLE_COVERAGE disabled', renderedImgNoSampleCoverage.getAccess());
         bufferedLogToConsole('Clearing color to all-zeros');
@@ -1509,7 +1559,7 @@ goog.scope(function() {
         this.drawPattern(false);
         bufferedLogToConsole('Drawing the pattern with gl.SAMPLE_COVERAGE enabled, using same sample coverage values but inverted masks');
         this.drawPattern(true);
-        renderedImgSampleCoverage = this.readImage();
+        /** @type {tcuSurface.Surface} */ var renderedImgSampleCoverage = this.readImage();
 
         tcuLogImage.logImage('RenderedImageSampleCoverage', 'Rendered image with gl.SAMPLE_COVERAGE enabled', renderedImgSampleCoverage.getAccess());
         /** @type {boolean} */ var passed = tcuImageCompare.pixelThresholdCompare(
@@ -1663,7 +1713,7 @@ goog.scope(function() {
      * Run test
      * @param {WebGL2RenderingContext} context
      */
-     es3fMultisampleTests.run = function(context) {
+    es3fMultisampleTests.run = function(context, range) {
         gl = context;
         //Set up Test Root parameters
         var testName = 'multisample';
@@ -1680,6 +1730,8 @@ goog.scope(function() {
         try {
             //Create test cases
             es3fMultisampleTests.init();
+            if (range)
+                state.setRange(range);
             //Run test cases
             tcuTestCase.runTestCases();
         }

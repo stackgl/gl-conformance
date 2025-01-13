@@ -1,28 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
-# Copyright (c) 2015 The Khronos Group Inc.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and/or associated documentation files (the
-# "Materials"), to deal in the Materials without restriction, including
-# without limitation the rights to use, copy, modify, merge, publish,
-# distribute, sublicense, and/or sell copies of the Materials, and to
-# permit persons to whom the Materials are furnished to do so, subject to
-# the following conditions:
-#
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Materials.
-#
-# THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+# Copyright (c) 2019 The Khronos Group Inc.
+# Use of this source code is governed by an MIT-style license that can be
+# found in the LICENSE.txt file.
 
 """
-  Generator for tex-image-and-sub-image-2d* tests.
+  Generator for tex-2d* and tex-3d* tests.
   This file needs to be run in its folder.
 """
 
@@ -31,28 +14,9 @@ import os.path
 import sys
 
 _LICENSE = """<!--
-
-Copyright (c) 2015 The Khronos Group Inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and/or associated documentation files (the
-"Materials"), to deal in the Materials without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Materials, and to
-permit persons to whom the Materials are furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Materials.
-
-THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 -->
 
 """
@@ -68,6 +32,7 @@ DO NOT EDIT!
 
 _ELEMENT_TYPES = [
   'canvas',
+  'canvas-sub-rectangle',
   'image',
   'image-data',
   'svg-image',
@@ -87,8 +52,11 @@ _FORMATS_TYPES_WEBGL1 = [
   {'internal_format': 'RGBA', 'format': 'RGBA', 'type': 'UNSIGNED_BYTE' },
   {'internal_format': 'RGBA', 'format': 'RGBA', 'type': 'UNSIGNED_SHORT_4_4_4_4' },
   {'internal_format': 'RGBA', 'format': 'RGBA', 'type': 'UNSIGNED_SHORT_5_5_5_1' },
+  {'internal_format': 'LUMINANCE',       'format': 'LUMINANCE',       'type': 'UNSIGNED_BYTE' },
+  {'internal_format': 'ALPHA',           'format': 'ALPHA',           'type': 'UNSIGNED_BYTE' },
+  {'internal_format': 'LUMINANCE_ALPHA', 'format': 'LUMINANCE_ALPHA', 'type': 'UNSIGNED_BYTE' },
 ]
-    
+
 _FORMATS_TYPES_WEBGL2 = [
   {'internal_format': 'R8', 'format': 'RED', 'type': 'UNSIGNED_BYTE' },
   {'internal_format': 'R16F', 'format': 'RED', 'type': 'HALF_FLOAT' },
@@ -117,6 +85,7 @@ _FORMATS_TYPES_WEBGL2 = [
   {'internal_format': 'SRGB8_ALPHA8', 'format': 'RGBA', 'type': 'UNSIGNED_BYTE' },
   {'internal_format': 'RGB5_A1', 'format': 'RGBA', 'type': 'UNSIGNED_BYTE' },
   {'internal_format': 'RGB5_A1', 'format': 'RGBA', 'type': 'UNSIGNED_SHORT_5_5_5_1' },
+  {'internal_format': 'RGB10_A2', 'format': 'RGBA', 'type': 'UNSIGNED_INT_2_10_10_10_REV' },
   {'internal_format': 'RGBA4', 'format': 'RGBA', 'type': 'UNSIGNED_BYTE' },
   {'internal_format': 'RGBA4', 'format': 'RGBA', 'type': 'UNSIGNED_SHORT_4_4_4_4' },
   {'internal_format': 'RGBA16F', 'format': 'RGBA', 'type': 'HALF_FLOAT' },
@@ -124,14 +93,14 @@ _FORMATS_TYPES_WEBGL2 = [
   {'internal_format': 'RGBA32F', 'format': 'RGBA', 'type': 'FLOAT' },
   {'internal_format': 'RGBA8UI', 'format': 'RGBA_INTEGER', 'type': 'UNSIGNED_BYTE' },
 ]
-    
+
 def GenerateFilename(dimension, element_type, internal_format, format, type):
   """Generate test filename."""
-  filename = ("tex-image-and-sub-image-" + dimension + "d-with-" + element_type + "-" +
+  filename = ("tex-" + dimension + "d-" +
               internal_format + "-" + format + "-" + type + ".html")
   return filename.lower()
-    
-def WriteTest(filename, dimension, element_type, internal_format, format, type):
+
+def WriteTest(filename, dimension, element_type, internal_format, format, type, default_context_version):
   """Write one test."""
   file = open(filename, "wb")
   file.write(_LICENSE)
@@ -144,7 +113,13 @@ def WriteTest(filename, dimension, element_type, internal_format, format, type):
 <link rel="stylesheet" href="../../../resources/js-test-style.css"/>
 <script src="../../../js/js-test-pre.js"></script>
 <script src="../../../js/webgl-test-utils.js"></script>
-<script src="../../../js/tests/tex-image-and-sub-image-utils.js"></script>
+<script src="../../../js/tests/tex-image-and-sub-image-utils.js"></script>"""
+  if element_type == 'image-bitmap-from-image-data' or element_type == 'image-bitmap-from-image' or \
+     element_type == 'image-bitmap-from-video' or element_type == 'image-bitmap-from-canvas' or \
+     element_type == 'image-bitmap-from-blob' or element_type == 'image-bitmap-from-image-bitmap':
+    code += """
+<script src="../../../js/tests/tex-image-and-sub-image-with-image-bitmap-utils.js"></script>"""
+  code += """
 <script src="../../../js/tests/tex-image-and-sub-image-%(dimension)sd-with-%(element_type)s.js"></script>
 </head>
 <body>"""
@@ -162,7 +137,7 @@ function testPrologue(gl) {
     return true;
 }
 
-generateTest("%(internal_format)s", "%(format)s", "%(type)s", testPrologue, "../../../resources/")();
+generateTest("%(internal_format)s", "%(format)s", "%(type)s", testPrologue, "../../../resources/", %(default_context_version)s)();
 </script>
 </body>
 </html>
@@ -173,10 +148,11 @@ generateTest("%(internal_format)s", "%(format)s", "%(type)s", testPrologue, "../
     'internal_format': internal_format,
     'format': format,
     'type': type,
+    'default_context_version': default_context_version,
   })
   file.close()
 
-def GenerateTests(test_dir, test_cases, dimension):
+def GenerateTests(test_dir, test_cases, dimension, default_context_version):
   test_dir_template = test_dir + '/%s'
   for element_type in _ELEMENT_TYPES:
     os.chdir(test_dir_template % element_type.replace('-', '_'))
@@ -192,15 +168,15 @@ def GenerateTests(test_dir, test_cases, dimension):
       filename = GenerateFilename(dimension, element_type, internal_format, format, type)
       index_file.write(filename)
       index_file.write('\n')
-      WriteTest(filename, dimension, element_type, internal_format, format, type)
+      WriteTest(filename, dimension, element_type, internal_format, format, type, default_context_version)
     index_file.close();
 
 def main(argv):
   """This is the main function."""
   py_dir = os.path.dirname(os.path.realpath(__file__))
-  GenerateTests(os.path.realpath(py_dir + '/../conformance/textures'), _FORMATS_TYPES_WEBGL1, '2')
-  GenerateTests(os.path.realpath(py_dir + '/../conformance2/textures'), _FORMATS_TYPES_WEBGL2, '2')
-  GenerateTests(os.path.realpath(py_dir + '/../conformance2/textures'), _FORMATS_TYPES_WEBGL2, '3')
+  GenerateTests(os.path.realpath(py_dir + '/../conformance/textures'), _FORMATS_TYPES_WEBGL1, '2', '1')
+  GenerateTests(os.path.realpath(py_dir + '/../conformance2/textures'), _FORMATS_TYPES_WEBGL2, '2', '2')
+  GenerateTests(os.path.realpath(py_dir + '/../conformance2/textures'), _FORMATS_TYPES_WEBGL2, '3', '2')
 
 if __name__ == '__main__':
   sys.exit(main(sys.argv[1:]))

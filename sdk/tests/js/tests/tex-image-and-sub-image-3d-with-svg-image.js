@@ -1,27 +1,10 @@
 /*
-** Copyright (c) 2015 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 
-function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath) {
+function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath, defaultContextVersion) {
     var wtu = WebGLTestUtils;
     var tiu = TexImageUtils;
     var gl = null;
@@ -34,6 +17,8 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
     {
         description('Verify texImage3D and texSubImage3D code paths taking SVG image elements (' + internalFormat + '/' + pixelFormat + '/' + pixelType + ')');
 
+        // Set the default context version while still allowing the webglVersion URL query string to override it.
+        wtu.setDefault3DContextVersion(defaultContextVersion);
         gl = wtu.create3DContext("example");
 
         if (!prologue(gl)) {
@@ -77,7 +62,8 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         // Initialize the texture to black first
         gl.texImage3D(bindingTarget, 0, gl[internalFormat], image.width, image.height, 1 /* depth */, 0,
                       gl[pixelFormat], gl[pixelType], null);
-        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, gl[pixelFormat], gl[pixelType], image);
+        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, image.width, image.height, 1 /* depth */,
+                         gl[pixelFormat], gl[pixelType], image);
 
         // Draw the triangles
         wtu.clearAndDrawUnitQuad(gl, [0, 0, 0, 255]);

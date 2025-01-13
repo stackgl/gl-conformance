@@ -1,27 +1,10 @@
 /*
-** Copyright (c) 2015 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 
-function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath) {
+function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath, defaultContextVersion) {
     var wtu = WebGLTestUtils;
     var tiu = TexImageUtils;
     var gl = null;
@@ -34,6 +17,8 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
     {
         description('Verify texImage3D and texSubImage3D code paths taking canvas elements (' + internalFormat + '/' + pixelFormat + '/' + pixelType + ')');
 
+        // Set the default context version while still allowing the webglVersion URL query string to override it.
+        wtu.setDefault3DContextVersion(defaultContextVersion);
         gl = wtu.create3DContext("example");
 
         if (!prologue(gl)) {
@@ -58,9 +43,7 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         gl.clearColor(0,0,0,1);
         gl.clearDepth(1);
 
-        var testCanvas = document.createElement('canvas');
-        runTest(testCanvas);
-        //document.body.appendChild(testCanvas);
+        runTest();
     }
 
     function setCanvasToRedGreen(ctx) {
@@ -104,8 +87,11 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
 
     function runOneIteration(canvas, flipY, program, bindingTarget, opt_texture, opt_fontTest)
     {
+        var objType = 'canvas';
+        if (canvas.transferToImageBitmap)
+          objType = 'OffscreenCanvas';
         debug('Testing ' + ' with flipY=' + flipY + ' bindingTarget=' + (bindingTarget == gl.TEXTURE_3D ? 'TEXTURE_3D' : 'TEXTURE_2D_ARRAY') +
-              ' canvas size: ' + canvas.width + 'x' + canvas.height + (opt_fontTest ? " with fonts" : " with red-green"));
+              ' source object: ' + objType + ' canvas size: ' + canvas.width + 'x' + canvas.height + (opt_fontTest ? " with fonts" : " with red-green"));
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         if (!opt_texture) {
             var texture = gl.createTexture();
@@ -127,7 +113,8 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         // Initialize the texture to black first
         gl.texImage3D(bindingTarget, 0, gl[internalFormat], canvas.width, canvas.height, 1 /* depth */, 0,
                       gl[pixelFormat], gl[pixelType], null);
-        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, gl[pixelFormat], gl[pixelType], canvas);
+        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, canvas.width, canvas.height, 1 /* depth */,
+                         gl[pixelFormat], gl[pixelType], canvas);
 
         var width = gl.canvas.width;
         var height = gl.canvas.height;
@@ -170,16 +157,24 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
 
     function runTest(canvas)
     {
-        var ctx = canvas.getContext("2d");
+        var canvas = document.createElement('canvas');
 
         var cases = [
-            { flipY: true,  font: false, init: setCanvasToMin },
-            { flipY: false, font: false },
-            { flipY: true,  font: false, init: setCanvasTo257x257 },
-            { flipY: false, font: false },
-            { flipY: true,  font: true, init: drawTextInCanvas },
-            { flipY: false, font: true },
+            { canvas: canvas, flipY: true,  font: false, init: setCanvasToMin },
+            { canvas: canvas, flipY: false, font: false },
+            { canvas: canvas, flipY: true,  font: false, init: setCanvasTo257x257 },
+            { canvas: canvas, flipY: false, font: false },
+            { canvas: canvas, flipY: true,  font: true, init: drawTextInCanvas },
+            { canvas: canvas, flipY: false, font: true },
         ];
+
+        if (window.OffscreenCanvas) {
+            var offscreenCanvas = new OffscreenCanvas(1, 1);
+            cases = cases.concat([
+                { canvas: offscreenCanvas, flipY: true,  font: false, init: setCanvasToMin },
+                { canvas: offscreenCanvas, flipY: false, font: false },
+            ]);
+        }
 
         function runTexImageTest(bindingTarget) {
             var program;
@@ -196,11 +191,12 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
                 function runNextTest() {
                     var c = cases[caseNdx];
                     if (c.init) {
-                      c.init(ctx, bindingTarget);
+                      c.init(c.canvas.getContext('2d'), bindingTarget);
                     }
-                    texture = runOneIteration(canvas, c.flipY, program, bindingTarget, texture, c.font);
+                    texture = runOneIteration(c.canvas, c.flipY, program, bindingTarget, texture, c.font);
                     // for the first 2 iterations always make a new texture.
-                    if (count > 2) {
+                    if (count < 2) {
+                      gl.deleteTexture(texture);
                       texture = undefined;
                     }
                     ++caseNdx;

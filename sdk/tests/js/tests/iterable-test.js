@@ -1,24 +1,7 @@
 /*
-** Copyright (c) 2013 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 IterableTest = (function() {
 
@@ -33,8 +16,7 @@ IterableTest = (function() {
       debug("Test " + count + " of " + target);
       var success = test();
       if (count < target && success !== false) {
-        wtu.waitForComposite(doNextTest);
-        //setTimeout(doNextTest, 100);
+        wtu.dispatchPromise(doNextTest);
       } else {
         finishTest();
       }
@@ -125,10 +107,15 @@ IterableTest = (function() {
 
     gl.uniformMatrix4fv(uniforms.u_modelViewProjMatrix.location, false, identityMat);
 
+    var extraHeight = 0;
+
     function test() {
       var gl2 = wtu.create3DContext(null, {antialias: true});
 
-      gl2.canvas.width = gl2.canvas.height = 1024;
+      gl2.canvas.width = 1024;
+      // Make this test a little more stressful by slightly changing the canvas's height each iteration.
+      gl2.canvas.height = 1024 + extraHeight;
+      extraHeight = (1 + extraHeight) % 4;
       gl2.canvas.style.width = gl2.canvas.style.height = "1px";
       document.body.appendChild(gl2.canvas);
 
@@ -162,12 +149,40 @@ IterableTest = (function() {
     return test;
   }
 
+  // Draws repeatedly to a large canvas with preserveDrawingBuffer enabled to
+  // try and provoke a context loss.
+  function createPreserveDrawingBufferLeakTest(gl) {
+    var contextActive = true;
+    gl.canvas.addEventListener("webglcontextlost", () => {
+      testFailed("Context was lost");
+      contextActive = false;
+    });
+
+    function test() {
+      var x = Math.random() * gl.drawingBufferWidth;
+      var y = Math.random() * gl.drawingBufferHeight;
+      var width = Math.random() * (gl.drawingBufferWidth - x);
+      var height = Math.random() * (gl.drawingBufferHeight - y);
+
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(x, y, width, height);
+      gl.clearColor(Math.random(), Math.random(), Math.random(), 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      wtu.glErrorShouldBe(gl, gl.NO_ERROR, "Should be no errors");
+
+      return contextActive;
+    };
+
+    return test;
+  }
+
   return {
     run: run,
 
     createContextCreationAndDestructionTest: createContextCreationAndDestructionTest,
     createContextCreationTest: createContextCreationTest,
-    createMultisampleCorruptionTest: createMultisampleCorruptionTest
+    createMultisampleCorruptionTest: createMultisampleCorruptionTest,
+    createPreserveDrawingBufferLeakTest: createPreserveDrawingBufferLeakTest
   };
 
 })();

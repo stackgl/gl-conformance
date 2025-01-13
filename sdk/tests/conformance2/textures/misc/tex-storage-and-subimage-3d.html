@@ -1,28 +1,7 @@
 <!--
-
-/*
-** Copyright (c) 2014 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-*/
-
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 -->
 
 <!DOCTYPE html>
@@ -223,6 +202,35 @@ function runTexStorageAndSubImage3DTest()
                          pixels);
         wtu.glErrorShouldBe(gl, gl.INVALID_VALUE, "texSubImage3D should fail for dimension out of range");
     });
+
+    debug("");
+    debug("Test non-square images:");
+    const levels = 4;
+    const maxSize = 1 << (levels-1);
+
+    function expectOk(target, x,y,z, err) {
+        debug("(target=" + target + ", size=[" + ([x,y,z].join(', ')) + "])");
+        const tex = gl.createTexture();
+        gl.bindTexture(gl[target], tex);
+        gl.texStorage3D(gl[target], levels+1, gl.RGBA8, x, y, z);
+        wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "levels=levels+1");
+
+        gl.texStorage3D(gl[target], levels, gl.RGBA8, x, y, z);
+        wtu.glErrorShouldBe(gl, gl[err], "levels=levels");
+        gl.deleteTexture(tex);
+    }
+    expectOk("TEXTURE_3D", maxSize, maxSize, maxSize, "NO_ERROR");
+    expectOk("TEXTURE_3D", maxSize, maxSize,       1, "NO_ERROR");
+    expectOk("TEXTURE_3D", maxSize,       1, maxSize, "NO_ERROR");
+    expectOk("TEXTURE_3D", maxSize,       1,       1, "NO_ERROR");
+    expectOk("TEXTURE_3D",       1, maxSize, maxSize, "NO_ERROR");
+    expectOk("TEXTURE_3D",       1, maxSize,       1, "NO_ERROR");
+    expectOk("TEXTURE_3D",       1,       1, maxSize, "NO_ERROR");
+
+    expectOk("TEXTURE_2D_ARRAY", maxSize, maxSize, 10, "NO_ERROR");
+    expectOk("TEXTURE_2D_ARRAY", maxSize,       1, 10, "NO_ERROR");
+    expectOk("TEXTURE_2D_ARRAY",       1, maxSize, 10, "NO_ERROR");
+    expectOk("TEXTURE_2D_ARRAY",       1,       1, 10, "INVALID_OPERATION");
 }
 
 debug("");

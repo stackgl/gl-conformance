@@ -16,35 +16,63 @@
   <depends>
     <api version="1.0"/>
 
-    <ext name="OES_texture_half_float" require="true"/>
+    <ext name="OES_texture_half_float" require="webgl1"/>
   </depends>
 
   <overview>
     <mirrors href="http://www.khronos.org/registry/gles/extensions/EXT/EXT_color_buffer_half_float.txt"
              name="EXT_color_buffer_half_float">
       <addendum>
-        <p>All references to <code>R16F</code> and <code>RG16F</code> types
-        are ignored.</p>
+        <p>In WebGL 1.0 contexts, references to the <code>R16F</code> and
+        <code>RG16F</code> types are ignored.</p>
+      </addendum>
+      <addendum>
+	<p>WebGL implementations supporting this extension are required to
+	support rendering to the <code>RGBA16F</code> format.</p>
       </addendum>
     </mirrors>
 
     <features>
       <feature>
-        <p>The 16-bit floating-point types <code>RGB16F</code> and
-        <code>RGBA16F</code> become available as color-renderable formats.
-        Renderbuffers can be created in these formats. These and textures
-        created with <code>type = HALF_FLOAT_OES</code>, which will have one
-        of these internal formats, can be attached to framebuffer object color
-        attachments for rendering.</p>
+        <p><b>In WebGL 1.0 contexts</b>, the 16-bit floating-point types
+        <code>RGB16F</code> and <code>RGBA16F</code> become available as
+        color-renderable formats.  Renderbuffers can be created in these
+        formats. These and textures created with <code>type =
+        HALF_FLOAT_OES</code>, which will have one of these internal formats,
+        can be attached to framebuffer object color attachments for
+        rendering. Implementations supporting this extension are required to
+        support rendering to the <code>RGBA16F</code> format.  Applications must
+        check framebuffer completeness to determine if <code>RGB16F</code> is
+        supported.</p>
       </feature>
 
       <feature>
-        <p><span style="color: red">NOTE:</span> fragment shaders outputs
-        gl_FragColor and gl_FragData[0] will only be clamped and converted
-        when the color buffer is fixed-point and <code>BlendColor()</code> and
-        <code>ClearColor()</code> will no longer clamp their parameter values
-        on input. Clamping will be applied as necessary at draw time according
-        to the type of color buffer in use.</p>
+        <p><b>In WebGL 2.0 contexts</b>, the 16-bit floating-point types
+        <code>RGBA16F</code>, <code>RG16F</code>, and <code>R16F</code> become
+        available as color-renderable formats.  Renderbuffers can be created in
+        these formats. These and textures created with <code>type =
+        HALF_FLOAT</code>, which will have one of these internal formats, can be
+        attached to framebuffer object color attachments for rendering.
+        Implementations supporting this extension are required to support
+        rendering to <code>RGBA16F</code> format. The <code>RGB16F</code> format
+        is not color-renderable.</p>
+      </feature>
+
+      <feature>
+        <p><span style="color: red">NOTE:</span> fragment shaders' outputs
+        <code>gl_FragColor</code> and <code>gl_FragData[0]</code> will only be
+        clamped and converted when the color buffer is fixed-point, and
+        <code>clearColor()</code> will no longer clamp its parameter values on
+        input. Clamping will be applied as necessary at draw time according to
+        the type of color buffer in use.</p>
+      </feature>
+
+      <feature>
+        <p>If the implementation supports unclamped blend color, the
+        <code>blendColor()</code> will no longer clamp its parameter values on
+        input. Clamping will be applied as necessary at draw time according to
+        the type of color buffer in use. Applications may check the effective
+        blend color with <code>getParameter</code>.</p>
       </feature>
 
       <feature>
@@ -63,7 +91,7 @@
   </overview>
 
   <idl xml:space="preserve">
-[NoInterfaceObject]
+[Exposed=(Window,Worker), LegacyNoInterfaceObject]
 interface EXT_color_buffer_half_float {
   const GLenum RGBA16F_EXT = 0x881A;
   const GLenum RGB16F_EXT = 0x881B;
@@ -71,6 +99,32 @@ interface EXT_color_buffer_half_float {
   const GLenum UNSIGNED_NORMALIZED_EXT = 0x8C17;
 }; // interface EXT_color_buffer_half_float
   </idl>
+
+  <newtok>
+    <function name="renderbufferStorage" type="undefined">
+      <param name="target" type="GLenum"/>
+      <param name="internalformat" type="GLenum"/>
+      <param name="width" type="GLsizei"/>
+      <param name="height" type="GLsizei"/>
+      <p>In WebGL 1.0 contexts, <code>RGB16F_EXT</code> and
+      <code>RGBA16F_EXT</code> are accepted as the
+      <code>internalformat</code> parameter.</p>
+      <p>In WebGL 2.0 contexts, <code>RGBA16F</code>,
+      <code>RG16F</code>, and <code>R16F</code> are accepted as the
+      <code>internalformat</code> parameter.</p>
+    </function>
+    <function name="getFramebufferAttachmentParameter" type="any">
+      <param name="target" type="GLenum"/>
+      <param name="attachment" type="GLenum"/>
+      <param name="pname" type="GLenum"/>
+      <p>In WebGL 1.0 contexts,
+      <code>FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE_EXT</code>
+      is accepted as the <code>pname</code> parameter.</p>
+      <p>An <code>INVALID_OPERATION</code> error is generated if
+      <code>attachment</code> is <code>DEPTH_STENCIL_ATTACHMENT</code>
+      and <code>pname</code> is <code>FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE_EXT</code>.</p>
+    </function>
+  </newtok>
 
   <additions>
     <p>In section 5.13.12 <cite>Reading back pixels</cite>, change the allowed
@@ -133,6 +187,24 @@ interface EXT_color_buffer_half_float {
 
     <revision date="2014/11/24">
       <change>Move to community approved.</change>
+    </revision>
+
+    <revision date="2016/05/05">
+      <change>Subsumed in WebGL 2.0 by EXT_color_buffer_float.</change>
+    </revision>
+
+    <revision date="2017/09/14">
+      <change>Require RGBA16F to be color-renderable and RGB16F to be optionally color-renderable.</change>
+    </revision>
+
+    <revision date="2020/08/31">
+      <change>Expose to WebGL 2.0 contexts to support devices which can render
+      only to 16-bit floating point targets, and therefore can not support
+      EXT_color_buffer_float.</change>
+    </revision>
+
+    <revision date="2022/12/02">
+      <change>Clarified framebuffer object attachment component type queries.</change>
     </revision>
   </history>
 </extension>

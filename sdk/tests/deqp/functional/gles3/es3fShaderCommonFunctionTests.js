@@ -271,32 +271,91 @@ goog.scope(function() {
     };
 
     /**
+     * @param {boolean} value
+     * @return {string}
+     */
+    es3fShaderCommonFunctionTests.ToBoolString = function(value) {
+        return value ? "true" : "false";
+    };
+
+    /**
+     * @param {gluVarType.VarType} varType
+     * @param {Array<*>} values
+     * @return {string}
+     */
+    es3fShaderCommonFunctionTests.VarValue = function(varType, values) {
+        /** @type {gluShaderUtil.DataType} */ var basicType = varType.getBasicType();
+        /** @type {gluShaderUtil.DataType} */ var scalarType = gluShaderUtil.getDataTypeScalarTypeAsDataType(basicType);
+        /** @type {number} */ var numComponents = gluShaderUtil.getDataTypeScalarSize(basicType);
+        /** @type {string} */ var outputStr = "";
+
+        if (numComponents > 1) {
+            outputStr += gluShaderUtil.getDataTypeName(basicType) + "(";
+        }
+
+        for (var compNdx = 0; compNdx < numComponents; ++compNdx) {
+            if (compNdx != 0) {
+                outputStr += ", ";
+            }
+
+            // tcu::toHex() is all commented out in this project.
+            // e.g. Line 199 of es3fShaderPackingFunctionTests.js
+            switch (scalarType) {
+                case gluShaderUtil.DataType.FLOAT:
+                case gluShaderUtil.DataType.INT:
+                case gluShaderUtil.DataType.UINT:
+                    outputStr += values[compNdx];
+                    break;
+                case gluShaderUtil.DataType.BOOL:
+                    outputStr += es3fShaderCommonFunctionTests.ToBoolString(values[compNdx]);
+                    break;
+
+                default:
+                    throw Error('Unrecognized dataType ' + scalarType);
+            }
+        }
+
+        if (numComponents > 1) {
+            outputStr += ")";
+        }
+
+        return outputStr;
+    }
+
+    /**
      * @return {tcuTestCase.IterateResult}
      */
     es3fShaderCommonFunctionTests.CommonFunctionCase.prototype.iterate = function() {
         /** @type {number} */ var numInputScalars = es3fShaderCommonFunctionTests.computeTotalScalarSize(this.m_spec.inputs);
         /** @type {number} */ var numOutputScalars = es3fShaderCommonFunctionTests.computeTotalScalarSize(this.m_spec.outputs);
-        /** @type {goog.TypedArray} */ var inputData;
-        /** @type {goog.TypedArray} */ var outputData;
+        /** @type {Array<goog.TypedArray>} */ var inputData = [];
+        /** @type {Array<goog.TypedArray>} */ var outputData = [];
         /** @type {gluShaderUtil.DataType} */ var inputType = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.DataType} */ var outputType = this.m_spec.outputs[0].varType.getBasicType();
-        /** @type {Array<number>} */ var inputValues;
+        /** @type {Array<Array<number>>} */ var inputValues;
         /** @type {ArrayBuffer} */ var outputValues;
         inputValues = this.getInputValues(this.m_numValues);
 
-        inputData = inputType >= gluShaderUtil.DataType.FLOAT && inputType <= gluShaderUtil.DataType.FLOAT_VEC4 ? new Float32Array(inputValues) :
-                    inputType >= gluShaderUtil.DataType.INT && inputType <= gluShaderUtil.DataType.INT_VEC4 ? new Int32Array(inputValues) :
-                    inputType >= gluShaderUtil.DataType.UINT && inputType <= gluShaderUtil.DataType.UINT_VEC4 ? new Uint32Array(inputValues) :
-                    null;
+        for (var inNdx = 0; inNdx < inputValues.length; inNdx++) {
+            var data = inputType >= gluShaderUtil.DataType.FLOAT && inputType <= gluShaderUtil.DataType.FLOAT_VEC4 ? new Float32Array(inputValues[inNdx]) :
+                       inputType >= gluShaderUtil.DataType.INT && inputType <= gluShaderUtil.DataType.INT_VEC4 ? new Int32Array(inputValues[inNdx]) :
+                       inputType >= gluShaderUtil.DataType.UINT && inputType <= gluShaderUtil.DataType.UINT_VEC4 ? new Uint32Array(inputValues[inNdx]) :
+                       null;
+            inputData.push(data);
+        }
 
         // Execute shader.
         this.m_executor.useProgram();
-        outputValues = this.m_executor.execute(this.m_numValues, [inputData])[0].buffer;
-        outputData = outputType >= gluShaderUtil.DataType.FLOAT && outputType <= gluShaderUtil.DataType.FLOAT_VEC4 ? new Float32Array(outputValues) :
-                    outputType >= gluShaderUtil.DataType.INT && outputType <= gluShaderUtil.DataType.INT_VEC4 ? new Int32Array(outputValues) :
-                    outputType >= gluShaderUtil.DataType.UINT && outputType <= gluShaderUtil.DataType.UINT_VEC4 ? new Uint32Array(outputValues) :
-                    outputType >= gluShaderUtil.DataType.BOOL && outputType <= gluShaderUtil.DataType.BOOL_VEC4 ? new Int32Array(outputValues) :
-                    null;
+        outputValues = this.m_executor.execute(this.m_numValues, inputData);
+        for (var outNdx = 0; outNdx < outputValues.length; outNdx++) {
+            var data = outputType >= gluShaderUtil.DataType.FLOAT && outputType <= gluShaderUtil.DataType.FLOAT_VEC4 ? new Float32Array(outputValues[outNdx].buffer) :
+                        outputType >= gluShaderUtil.DataType.INT && outputType <= gluShaderUtil.DataType.INT_VEC4 ? new Int32Array(outputValues[outNdx].buffer) :
+                        outputType >= gluShaderUtil.DataType.UINT && outputType <= gluShaderUtil.DataType.UINT_VEC4 ? new Uint32Array(outputValues[outNdx].buffer) :
+                        outputType >= gluShaderUtil.DataType.BOOL && outputType <= gluShaderUtil.DataType.BOOL_VEC4 ? new Int32Array(outputValues[outNdx].buffer) :
+                        null;
+            outputData.push(data);
+        }
+
         // TODO: verify proper TypedArray for BOOL types; defaulting to Int32Array in the mean time (outputValues returns 400 bytes, we need 100 elements)
         // Compare results.
         /** @type {Array<number>} */ var inScalarSizes = es3fShaderCommonFunctionTests.getScalarSizes(this.m_spec.inputs);
@@ -305,21 +364,43 @@ goog.scope(function() {
         /** @type {Array<*>} */ var curOutputPtr = [];
         /** @type {number} */ var numFailed = 0;
 
-        for (var inNdx = 0; inNdx < inputData.length; inNdx += inScalarSizes[0])
-            curInputPtr.push(inputData.slice(inNdx, inNdx + inScalarSizes[0]));
+        for (var inNdx = 0; inNdx < inputData.length; inNdx++) {
+            curInputPtr[inNdx] = [];
+            for (var valNdx = 0; valNdx < inputData[inNdx].length; valNdx += inScalarSizes[inNdx])
+                curInputPtr[inNdx].push(inputData[inNdx].slice(valNdx, valNdx + inScalarSizes[inNdx]));
+        }
 
-        for (var outNdx = 0; outNdx < outputData.length; outNdx += outScalarSizes[0])
-            curOutputPtr.push(outputData.slice(outNdx, outNdx + outScalarSizes[0]));
+        for (var outNdx = 0; outNdx < outputData.length; outNdx++) {
+            curOutputPtr[outNdx] = [];
+            for (var valNdx = 0; valNdx < outputData[outNdx].length; valNdx += outScalarSizes[outNdx])
+                curOutputPtr[outNdx].push(outputData[outNdx].slice(valNdx, valNdx + outScalarSizes[outNdx]));
+        }
 
+        this.m_failMsg = '';
         for (var valNdx = 0; valNdx < this.m_numValues; valNdx++) {
-            if (!this.compare([curInputPtr[valNdx]], [curOutputPtr[valNdx]])) {
+            var curInputValues = [];
+            var curOutputValues = [];
+            for (var inNdx = 0; inNdx < inputData.length; inNdx++) {
+                curInputValues.push(curInputPtr[inNdx][valNdx]);
+            }
+            for (var outNdx = 0; outNdx < outputData.length; outNdx++) {
+                curOutputValues.push(curOutputPtr[outNdx][valNdx]);
+            }
+            if (!this.compare(curInputValues, curOutputValues)) {
                 // \todo [2013-08-08 pyry] We probably want to log reference value as well?
 
                 bufferedLogToConsole('ERROR: comparison failed for value ' + valNdx + ':\n ' + this.m_failMsg);
                 bufferedLogToConsole(' inputs:');
-                bufferedLogToConsole(' ' + this.m_spec.inputs[0].name + ' = ' + this.m_spec.inputs[0].varType.toString() + ' ' + curInputPtr[valNdx]);
+                for (var inNdx = 0; inNdx < inputData.length; ++inNdx) {
+                    var varValue = es3fShaderCommonFunctionTests.VarValue(this.m_spec.inputs[0].varType, curInputValues[inNdx]);
+                    bufferedLogToConsole(' ' + this.m_spec.inputs[inNdx].name + ' = ' + varValue);
+                }
+
                 bufferedLogToConsole(' outputs:');
-                bufferedLogToConsole(' ' + this.m_spec.outputs[0].name + ' = ' + this.m_spec.outputs[0].varType.toString() + ' ' + curOutputPtr[valNdx]);
+                for (var outNdx = 0; outNdx < outputData.length; ++outNdx) {
+                    var varValue = es3fShaderCommonFunctionTests.VarValue(this.m_spec.inputs[0].varType, curOutputValues[outNdx]);
+                    bufferedLogToConsole(' ' + this.m_spec.outputs[outNdx].name + ' = ' + varValue);
+                }
 
                 this.m_failMsg = '';
                 numFailed += 1;
@@ -418,11 +499,15 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         if (gluShaderUtil.isDataTypeFloatOrVec(type))
-            return es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, floatRanges[precision][0], floatRanges[precision][1], numValues * scalarSize);
+            values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, floatRanges[precision][0], floatRanges[precision][1], numValues * scalarSize);
         else
-            return es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.INT, rnd, intRanges[precision][0], intRanges[precision][1], numValues * scalarSize);
+            values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.INT, rnd, intRanges[precision][0], intRanges[precision][1], numValues * scalarSize);
+
+        return values;
     };
 
     /**
@@ -510,14 +595,28 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         if (gluShaderUtil.isDataTypeFloatOrVec(type)) {
             // Special cases.
             // [dag] The special cases are 1, -1, and 0
-            return [1.0, -1.0, 0.0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, floatRanges[precision][0], floatRanges[precision][1], (numValues - 3) * scalarSize));
+            var specialCases = [1.0, -1.0, 0.0];
+            for (var caseNdx = 0; caseNdx < specialCases.length; caseNdx++)
+                for (var scalarNdx = 0; scalarNdx < scalarSize; scalarNdx++) {
+                    values[0].push(specialCases[caseNdx]);
+                }
+            values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, floatRanges[precision][0], floatRanges[precision][1], (numValues - 3) * scalarSize));
         } else {
-            return [1, -1, 0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.INT, rnd, intRanges[precision][0], intRanges[precision][1], (numValues - 3) * scalarSize));
+            var specialCases = [1, -1, 0];
+            for (var caseNdx = 0; caseNdx < specialCases.length; caseNdx++)
+                for (var scalarNdx = 0; scalarNdx < scalarSize; scalarNdx++) {
+                    values[0].push(specialCases[caseNdx]);
+                }
+            values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.INT, rnd, intRanges[precision][0], intRanges[precision][1], (numValues - 3) * scalarSize));
         }
+
+        return values;
     };
 
     /**
@@ -575,7 +674,7 @@ goog.scope(function() {
      */
     es3fShaderCommonFunctionTests.roundEven = function(v) {
         /** @type {number} */ var q = deMath.deFloatFrac(v);
-        /** @type {number} */ var truncated = Math.floor(v - q);
+        /** @type {number} */ var truncated = Math.trunc(v - q);
         /** @type {number} */ var rounded = (q > 0.5) ? (truncated + 1) : // Rounded up
             (q == 0.5 && (truncated % 2 != 0)) ? (truncated + 1) : // Round to nearest even at 0.5
             truncated; // Rounded down
@@ -618,23 +717,26 @@ goog.scope(function() {
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var numSpecialCases = 0;
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
         // Special cases.
         if (precision !== gluShaderUtil.precision.PRECISION_LOWP) {
             assertMsgOptions(numValues >= 20, 'numValues should be greater or equal than 20', false, true);
             for (var ndx = 0; ndx < 20; ndx++) {
                 /** @type {number} */ var v = deMath.clamp(ndx - 10.5, ranges[precision][0], ranges[precision][1]);
-                values.push(v);
+                for (var scalarNdx = 0; scalarNdx < scalarSize; scalarNdx++) {
+                    values[0].push(v);
+                }
                 numSpecialCases += 1;
             }
         }
 
         // Random cases.
-        values = values.concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
+        values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values);
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0]);
 
         return values;
     };
@@ -647,7 +749,6 @@ goog.scope(function() {
     es3fShaderCommonFunctionTests.RoundEvenCase.prototype.compare = function(inputs, outputs) {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
-        /** @type {boolean} */ var hasSignedZero = es3fShaderCommonFunctionTests.supportsSignedZero(precision);
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var in0;
         /** @type {number} */ var out0;
@@ -659,9 +760,7 @@ goog.scope(function() {
                 out0 = outputs[0][compNdx];
                 /** @type {number} */ var ref = es3fShaderCommonFunctionTests.roundEven(in0);
 
-                /** @type {number} */ var ulpDiff = hasSignedZero ?
-                    es3fShaderCommonFunctionTests.getUlpDiff(out0, ref) :
-                    es3fShaderCommonFunctionTests.getUlpDiffIgnoreZeroSign(out0, ref);
+                /** @type {number} */ var ulpDiff = es3fShaderCommonFunctionTests.getUlpDiffIgnoreZeroSign(out0, ref);
 
                 if (ulpDiff > 0) {
                     this.m_failMsg += 'Expected [' + compNdx + '] = ' + ref + ', got ULP diff ' + ulpDiff;
@@ -735,8 +834,8 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
-        /** @type {Array<number>} */ var values = [];
-        values = values.concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize));
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
 
         return values;
     };
@@ -819,7 +918,8 @@ goog.scope(function() {
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var mantissaBits = es3fShaderCommonFunctionTests.getMinMantissaBits(precision);
         /** @type {number} */ var mantissaMask = (~es3fShaderCommonFunctionTests.getMaxUlpDiffFromBits(mantissaBits)) & ((1 << 23) - 1);
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         for (var valNdx = 0; valNdx < numValues * scalarSize; valNdx++) {
             /** @type {boolean} */ var isNan = rnd.getFloat() > 0.3;
@@ -829,10 +929,14 @@ goog.scope(function() {
             /** @type {number} */ var sign = Math.abs(rnd.getInt()) & 0x1;
             /** @type {number} */ var value = (sign << 31) | (exp << 23) | mantissa;
 
-            // TODO: check the following assert
+            // Convert int to float.
+            var view = new DataView(new ArrayBuffer(4));
+            view.setInt32(0, value, true);
+            value = view.getFloat32(0, true);
+
             assertMsgOptions(tcuFloat.newFloat32(value).isInf() === isInf && tcuFloat.newFloat32(value).isNaN() === isNan, 'Assert error.', false, true);
 
-            values.push(value);
+            values[0].push(value);
         }
 
         return values;
@@ -914,7 +1018,8 @@ goog.scope(function() {
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var mantissaBits = es3fShaderCommonFunctionTests.getMinMantissaBits(precision);
         /** @type {number} */ var mantissaMask = (~es3fShaderCommonFunctionTests.getMaxUlpDiffFromBits(mantissaBits)) & ((1 << 23) - 1);
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         for (var valNdx = 0; valNdx < numValues * scalarSize; valNdx++) {
             /** @type {boolean} */ var isInf = rnd.getFloat() > 0.3;
@@ -924,9 +1029,14 @@ goog.scope(function() {
             /** @type {number} */ var sign = Math.abs(rnd.getInt()) & 0x1;
             /** @type {number} */ var value = (sign << 31) | (exp << 23) | mantissa;
 
+            // Convert int to float.
+            var view = new DataView(new ArrayBuffer(4));
+            view.setInt32(0, value, true);
+            value = view.getFloat32(0, true);
+
             assertMsgOptions(tcuFloat.newFloat32(value).isInf() === isInf && tcuFloat.newFloat32(value).isNaN() === isNan, 'Assert error.', false, true);
 
-            values.push(value);
+            values[0].push(value);
         }
 
         return values;
@@ -1013,8 +1123,10 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
+        /** @type {Array<Array<number>>} */ var values = [];
 
-        return es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
+        values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
+        return values;
     };
 
     /**
@@ -1037,8 +1149,14 @@ goog.scope(function() {
         for (var compNdx = 0; compNdx < scalarSize; compNdx++) {
             in0 = inputs[0][compNdx];
             out0 = outputs[0][compNdx];
+
+            // Convert int to uint because ref out is in uint format.
+            var view = new DataView(new ArrayBuffer(4));
+            view.setInt32(0, out0, true);
+            out0 = view.getUint32(0, true);
+
             refOut0 = tcuFloat.newFloat32(in0).bits();
-            ulpDiff = Math.abs(Math.floor(out0) - Math.floor(refOut0));
+            ulpDiff = Math.abs(out0 - refOut0);
             if (ulpDiff > maxUlpDiff) {
                 this.m_failMsg += 'Expected [' + compNdx + '] = ' + refOut0 + ' with threshold ' +
                             maxUlpDiff + ', got diff ' + ulpDiff;
@@ -1108,8 +1226,10 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {Array<number>} */ var range = [-1e8, 1e8];
+        /** @type {Array<Array<number>>} */ var values = [];
 
-        return es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, range[0], range[1], numValues * scalarSize);
+        values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, range[0], range[1], numValues * scalarSize);
+        return values;
     };
 
     /**
@@ -1130,9 +1250,13 @@ goog.scope(function() {
         for (var compNdx = 0; compNdx < scalarSize; compNdx++) {
             in0 = inputs[0][compNdx];
             out0 = outputs[0][compNdx];
-            refOut0 = tcuFloat.newFloat32(in0).bits();
-            ulpDiff = Math.abs(Math.floor(in0) - Math.floor(out0));
 
+            // Convert int to float
+            var view = new DataView(new ArrayBuffer(4));
+            view.setInt32(0, in0, true);
+            in0 = view.getFloat32(0, true);
+
+            ulpDiff = es3fShaderCommonFunctionTests.getUlpDiff(in0, out0);
             if (ulpDiff > maxUlpDiff) {
                 this.m_failMsg += 'Expected [' + compNdx + '] = ' + in0 + ' with ULP threshold ' +
                             maxUlpDiff + ', got ULP diff ' + ulpDiff;
@@ -1177,13 +1301,13 @@ goog.scope(function() {
         /** @type {gluShaderUtil.DataType} */ var type = this.m_spec.inputs[0].varType.getBasicType();
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
         // Random cases.
-        values = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
+        values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values);
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0]);
 
         return values;
     };
@@ -1285,19 +1409,20 @@ goog.scope(function() {
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
 
         /** @type {Array<number>} */ var specialCases = [0.0, -0.0, -0.9, 0.9, 1.0, -1.0];
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         // Special cases
         for (var caseNdx = 0; caseNdx < specialCases.length; caseNdx++)
         for (var scalarNdx = 0; scalarNdx < scalarSize; scalarNdx++)
-            values.push(specialCases[caseNdx]);
+            values[0].push(specialCases[caseNdx]);
 
         // Random cases.
-        values = values.concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - specialCases.length) * scalarSize));
+        values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - specialCases.length) * scalarSize));
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values);
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0]);
 
         return values;
     };
@@ -1341,8 +1466,8 @@ goog.scope(function() {
             for (var compNdx = 0; compNdx < scalarSize; compNdx++) {
                 in0 = inputs[0][compNdx];
                 out0 = outputs[0][compNdx];
-                /** @type {number} */ var minRes = Math.floor(in0 - eps);
-                /** @type {number} */ var maxRes = Math.floor(in0 + eps);
+                /** @type {number} */ var minRes = Math.trunc(in0 - eps);
+                /** @type {number} */ var maxRes = Math.trunc(in0 + eps);
                 /** @type {boolean} */ var anyOk = false;
 
                 for (var roundedVal = minRes; roundedVal <= maxRes; roundedVal++) {
@@ -1401,24 +1526,26 @@ goog.scope(function() {
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var numSpecialCases = 0;
 
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = []
 
         // Special cases.
         if (precision === gluShaderUtil.precision.PRECISION_LOWP) {
             assertMsgOptions(numValues >= 10, 'Sample too small.', false, true);
             for (var ndx = 0; ndx < 10; ndx++) {
                 /** @type {number} */ var v = deMath.clamp(ndx - 5.5, ranges[precision][0], ranges[precision][1]);
-                for (var iter = 1; iter <= scalarSize; iter++) values.push(v);
+                for (var iter = 1; iter <= scalarSize; iter++)
+                    values[0].push(v);
                 numSpecialCases += 1;
             }
         }
 
         // Random cases.
-        values = values.concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
+        values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values);
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0]);
 
         return values;
     };
@@ -1531,14 +1658,14 @@ goog.scope(function() {
         /** @type {gluShaderUtil.precision} */ var precision = this.m_spec.inputs[0].varType.getPrecision();
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
 
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
 
         // Random cases.
-        values = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
+        values[0] = es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], numValues * scalarSize);
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values);
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0]);
 
         return values;
     };
@@ -1645,24 +1772,27 @@ goog.scope(function() {
         /** @type {number} */ var scalarSize = gluShaderUtil.getDataTypeScalarSize(type);
         /** @type {number} */ var numSpecialCases = 0;
 
-        /** @type {Array<number>} */ var values = [];
+        /** @type {Array<Array<number>>} */ var values = [];
+        values[0] = [];
 
         // Special cases.
         if (precision !== gluShaderUtil.precision.PRECISION_LOWP) {
             assertMsgOptions(numValues >= 10, 'Sample too small.', false, true);
             for (var ndx = 0; ndx < 10; ndx++) {
                 /** @type {number} */ var v = deMath.clamp(ndx - 5.5, ranges[precision][0], ranges[precision][1]);
-                values.push(v);
+                for (var scalarNdx = 0; scalarNdx < scalarSize; scalarNdx++) {
+                    values[0].push(v);
+                }
                 numSpecialCases += 1;
             }
         }
 
         // Random cases.
-        values = values.concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
+        values[0] = values[0].concat(es3fShaderCommonFunctionTests.fillRandomScalars(es3fShaderCommonFunctionTests.Types.FLOAT, rnd, ranges[precision][0], ranges[precision][1], (numValues - numSpecialCases) * scalarSize));
 
         // If precision is mediump, make sure values can be represented in fp16 exactly
         if (precision === gluShaderUtil.precision.PRECISION_MEDIUMP)
-            es3fShaderCommonFunctionTests.vecToFloat16(values)
+            es3fShaderCommonFunctionTests.vecToFloat16(values[0])
 
         return values;
     };

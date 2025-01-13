@@ -31,6 +31,11 @@ goog.scope(function() {
 
 var deMath = framework.delibs.debase.deMath;
 
+var DE_ASSERT = function(x) {
+    if (!x)
+        throw new Error('Assert failed');
+};
+
 /** @const */ deMath.INT32_SIZE = 4;
 
 deMath.deInRange32 = function(a, mn, mx) {
@@ -46,6 +51,22 @@ deMath.deInBounds32 = function(a, mn, mx) {
  * @return {number}
  */
 deMath.deFloatFrac = function(a) { return a - Math.floor(a); };
+
+/**
+ * Transform a 64-bit float number into a 32-bit float number.
+ * Native dEQP uses 32-bit numbers, so sometimes 64-bit floating numbers in JS should be transformed into 32-bit ones to ensure the correctness of the result.
+ * @param {number} a
+ * @return {number}
+ */
+deMath.toFloat32 = (function() {
+    var FLOAT32ARRAY1 = new Float32Array(1);
+    return function(a) {
+        FLOAT32ARRAY1[0] = a;
+        return FLOAT32ARRAY1[0];
+    };
+})();
+
+/** @const */ deMath.INV_LOG_2_FLOAT32 = deMath.toFloat32(1.44269504089); /** 1.0 / log_e(2.0) */
 
 /**
  * Check if a value is a power-of-two.
@@ -510,11 +531,12 @@ deMath.deMathHash = function(a) {
 };
 
 /**
- * Converts a byte array to a number
+ * Converts a byte array to a number. Cannot convert numbers larger than 52 bits.
  * @param {Uint8Array} array
  * @return {number}
  */
 deMath.arrayToNumber = function(array) {
+    DE_ASSERT(array.length <= 6 || (array.length == 6 && array[5] <= 127));
     /** @type {number} */ var result = 0;
 
     for (var ndx = 0; ndx < array.length; ndx++) {
@@ -530,6 +552,7 @@ deMath.arrayToNumber = function(array) {
  * @param {number} number
  */
 deMath.numberToArray = function(array, number) {
+    DE_ASSERT(Number.isInteger(number));
     for (var byteNdx = 0; byteNdx < array.length; byteNdx++) {
         /** @type {number} */ var acumzndx = !byteNdx ? number : Math.floor(number / Math.pow(256, byteNdx));
         array[byteNdx] = acumzndx & 0xFF;
@@ -544,6 +567,7 @@ deMath.numberToArray = function(array, number) {
  * @return {number}
  */
 deMath.getBitRange = function(x, firstNdx, lastNdx) {
+    DE_ASSERT(lastNdx - firstNdx <= 52);
     var shifted = deMath.shiftRight(x, firstNdx);
     var bitSize = lastNdx - firstNdx;
     var mask;
@@ -553,6 +577,80 @@ deMath.getBitRange = function(x, firstNdx, lastNdx) {
         mask = Math.pow(2, bitSize) - 1;
     var masked = deMath.binaryAnd(shifted, mask);
     return masked;
+};
+
+/**
+ * Obtains the bit fragment from a Uint32Array representing a number.
+ * (ArrayBuffer representations are used in tcuFloat.)
+ *
+ * Cannot return more than 52 bits ((lastNdx - firstNdx) <= 52).
+ *
+ * @param {Uint32Array} array
+ * @param {number} firstNdx
+ * @param {number} lastNdx
+ * @return {number}
+ */
+deMath.getArray32BitRange = function(array, firstNdx, lastNdx) {
+    DE_ASSERT(0 <= firstNdx && firstNdx < (array.length * 32));
+    DE_ASSERT(0 < lastNdx && lastNdx <= (array.length * 32));
+    DE_ASSERT((lastNdx - firstNdx) <= 52);
+
+    // Example of how this works for a 64-bit number (Uint32Array of length 2).
+    //
+    // * Note that the shift operators in the code << and >>> are pointing in
+    //   the opposite direction of this diagram, since LSB is shown on the left.
+    //
+    // [array[0],                         array[1]                        ]
+    // [00000011111111111111111111111111, 11111111111100000000000000000000]
+    //  ^LSB                        MSB^  ^LSB                        MSB^
+    //
+    // [00000011111111111111111111111111, 11111111111100000000000000000000]
+    //        \                                       \
+    //         firstNdx = 6 (inclusive)                lastNdx = 44 (exclusive)
+    //         blockIndexA = 0                         blockIndexB = 1
+    //
+    // [00000011111111111111111111111111, 11111111111100000000000000000000]
+    //  \-----\                                       \-------------------\
+    //   bitsToBeginningOfBlock = 6                    bitsFromEndOfBlock = 20
+    //
+    //  -------------blockA-------------  -------------blockB-------------
+    // [00000011111111111111111111111111, 11111111111100000000000000000000]
+    //        ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+    //                   blockATruncated  blockBTruncated
+    //        \--blockATruncatedLength--\
+    //
+    //        11111111111111111111111111  111111111111
+    //        ^^^^^^^^^^^^^^^^^^^^^^^^^^--^^^^^^^^^^^^   return value (38 bits)
+
+    /** @type {number} */ var blockIndexA = Math.floor(firstNdx / 32);
+    /** @type {number} */ var bitsToBeginningOfBlock = firstNdx % 32;
+    /** @type {number} */ var blockIndexB = Math.floor((lastNdx - 1) / 32);
+    /** @type {number} */ var bitsFromEndOfBlock = 31 - ((lastNdx - 1) % 32);
+
+    /** @type {number} */ var blockB = array[blockIndexB];
+    // Chop off the most significant `bitsFromEndOfBlock` bits from blockB.
+    // Note: Initially this logic used a bitmask instead. But there are subtle
+    //   corner cases in JS that caused results to sometimes come out negative.
+    //   This truncation method is just used to avoid that complexity.
+    /** @type {number} */ var blockBTruncated = (blockB << bitsFromEndOfBlock) >>> bitsFromEndOfBlock;
+
+    if (blockIndexA == blockIndexB) {
+        // firstNdx and lastNdx are in the same block.
+        // Chop off the least significant `bitsToBeginningOfBlock` bits from blockBTruncated.
+        return blockBTruncated >>> bitsToBeginningOfBlock;
+    } else {
+        // firstNdx and lastNdx are in different blocks.
+        /** @type {number} */ var blockA = array[blockIndexA];
+        // Chop off the least significant `bitsToBeginningOfBlock` bits from blockA.
+        /** @type {number} */ var blockATruncated = blockA >>> bitsToBeginningOfBlock;
+        /** @type {number} */ var blockATruncatedLength = 32 - bitsToBeginningOfBlock;
+
+        // Concatenate blockATruncated and blockBTruncated.
+        // Conceptually equivalent to:
+        //     blockATruncated | (blockBTruncated << blockATruncatedLength)
+        // except that wouldn't work for numbers larger than 32 bits.
+        return blockATruncated + (blockBTruncated * Math.pow(2, blockATruncatedLength));
+    }
 };
 
 /**
@@ -784,9 +882,9 @@ deMath.shiftLeft = function(value, steps) {
  */
 deMath.shiftLeftVecScalar = function(a, b) {
     var dst = [];
-	for (var i = 0; i < a.length; i++)
-		dst.push(deMath.shiftLeft(a[i], b));
-	return dst;
+    for (var i = 0; i < a.length; i++)
+        dst.push(deMath.shiftLeft(a[i], b));
+    return dst;
 };
 
 /**
@@ -830,9 +928,9 @@ deMath.shiftRight = function(value, steps) {
  */
 deMath.shiftRightVecScalar = function(a, b) {
     var dst = [];
-	for (var i = 0; i < a.length; i++)
-		dst.push(deMath.shiftRight(a[i], b));
-	return dst;
+    for (var i = 0; i < a.length; i++)
+        dst.push(deMath.shiftRight(a[i], b));
+    return dst;
 };
 
 /** deMath.logicalAndBool over two arrays of booleans
@@ -982,19 +1080,22 @@ deMath.deFloatLdExp = function(a, exponent) {
  * @param {number} value
  * @return {Array<number>}
  */
-deMath.frexp = function(value) {
-   if (value === 0) return [value, 0];
+deMath.frexp = (function() {
    var data = new DataView(new ArrayBuffer(8));
-   data.setFloat64(0, value);
-   var bits = (data.getUint32(0) >>> 20) & 0x7FF;
-   if (bits === 0) {
-       data.setFloat64(0, value * Math.pow(2, 64));
-       bits = ((data.getUint32(0) >>> 20) & 0x7FF) - 64;
+
+   return function(value) {
+       if (value === 0) return [value, 0];
+       data.setFloat64(0, value);
+       var bits = (data.getUint32(0) >>> 20) & 0x7FF;
+       if (bits === 0) {
+           data.setFloat64(0, value * Math.pow(2, 64));
+           bits = ((data.getUint32(0) >>> 20) & 0x7FF) - 64;
+       }
+       var exponent = bits - 1022,
+           mantissa = deMath.ldexp(value, -exponent);
+       return [mantissa, exponent];
    }
-   var exponent = bits - 1022,
-       mantissa = deMath.ldexp(value, -exponent);
-   return [mantissa, exponent];
-};
+})();
 
 /**
  * @param {number} mantissa
