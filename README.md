@@ -1,72 +1,58 @@
-gl-conformance
-==============
-A port of the Khronos ARB WebGL conformance test suite to CommonJS and tape, so that it can be run without a browser or from within browserify easily.
+# The Official Khronos WebGL Repository
 
-# Example usage
+This is the official home of the Khronos
+WebGL repository for the WebGL specifications
+and the WebGL conformance test suite.
 
-To use the test suite, you pass it a reference to tape and whatever function you are going to use to create WebGL contexts:
+Before adding a new test or editing an existing test
+[please read these guidelines](sdk/tests/test-guidelines.md).
 
-```javascript
-require('gl-conformance')({
-  tape: require('tape'),
-  createContext: function(width, height, options) {
-    //Replace this with a function that constructs your WebGL context
-    var canvas    = document.createElement('canvas')
-    canvas.width  = width
-    canvas.height = height
-    var context   = canvas.getContext('webgl', options)
-    return context
-  }
-})
+You can find live versions of the specifications at
+https://www.khronos.org/webgl/
+
+The newest work in progress WebGL conformance test suite
+for the next version of the spec can be accessed at.
+https://www.khronos.org/registry/webgl/sdk/tests/webgl-conformance-tests.html
+
+Official live versions of the conformance test suite can be found at
+https://www.khronos.org/registry/webgl/conformance-suites/
+
+The WebGL Wiki can be found here
+https://www.khronos.org/webgl/wiki/
+
+This repository is licensed under the MIT license and all
+contributions are covered under the [MIT
+CLA](https://gist.github.com/KhronosWebservices/8f6da941cd2bb316e1f32e40a7f94429).
+
+## Cloning this repository
+
+When cloning this repository please pass the --recursive flag to git:
+
+    git clone --recursive [URL]
+
+This will properly install the [WebGLDeveloperTools](https://github.com/KhronosGroup/WebGLDeveloperTools)
+repository as a git submodule under sdk/devtools/.
+
+The last edited date in several specifications is automatically updated
+via a smudge filter. To benefit from this you must issue the following
+commands in the root of your clone.
+
+On Unix (Linux, Mac OS X, etc.) platforms and Windows using Git for Windows'
+Git Bash or Cygwin's bash terminal:
+
+```bash
+./install-gitconfig.sh
+rm specs/latest/*/index.html
+git checkout !$
 ```
 
-Then it will churn away at all the Khronos/ARB test cases and report the output to stdout as one would expect tap/tape to do.
+On Windows with the Command Prompt (requires `git.exe` in a directory
+on your %PATH%):
 
-# Installation
-
-```
-npm install gl-conformance
-```
-
-# API
-
-### `require('gl-conformance')(environment)`
-Runs the WebGL conformance suite within the given environment.  `environment` is an object with the following properties:
-
-* `tape` a refernce to a [`tape` object](https://www.npmjs.org/package/tape)
-* `createContext(width,height,opts)` a function which creates a WebGL context from the given parameters
-* `filter(caseName)` an optional filter which returns `true` if the case `caseName` should be run
-
-# Building the test suite
-
-If you are installing from npm, you can ignore this section.  Otherwise, for users who are building the project from github, you need to do the following:
-
-
-### 1. Install dependencies
-
-```
-npm install
+```cmd
+install-gitconfig.bat
+del specs/latest/1.0/index.html specs/latest/2.0/index.html 
+git checkout specs/latest/1.0/index.html specs/latest/2.0/index.html 
 ```
 
-### 2. Run the build script
-
-```
-npm run-script build
-```
-
-### 3. Run the test (uses browser WebGL context)
-
-```
-npm test
-```
-
-### 4. Publish
-
-```
-npm publish
-```
-
-# License
-Conformance tests are (c) Khronos ARB
-
-CommonJS port by Mikola Lysenko
+The first command adds an [include] of the repo's `.gitconfig` to the local git config file`.git/config` in your clone of the repo. `.gitconfig` contains the config of the "dater" filter. The remaining commands force a new checkout of the index.html files to smudge them with the date. These two are unnecessary if you plan to edit these files. All are unecessary if you do not care about having the dates shown.
