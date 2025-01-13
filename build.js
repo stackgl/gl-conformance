@@ -7,17 +7,21 @@ var BLACKLIST = require('./lib/blacklist.json')
 var VERSION = '1.0.3'
 var TEST_DIR = path.join(__dirname, 'node-test')
 
-// Build conformance test suite
-var scanFiles = require('./lib/scan-files')
-var parseCase = require('./lib/parse-case')
-var genCase = require('./lib/compile-case')
-var getResources = require('./lib/load-resources')
-
 var SUITE_DIR = path.join(
   __dirname,
   'conformance-suites',
   VERSION,
   'conformance')
+
+// We build shims ASAP because some scripts scan in shims immediately.
+var buildShims = require('./lib/build-shims')
+buildShims(SUITE_DIR)
+
+// Build conformance test suite
+var scanFiles = require('./lib/scan-files')
+var parseCase = require('./lib/parse-case')
+var genCase = require('./lib/compile-case')
+var getResources = require('./lib/load-resources')
 
 function fail (err) {
   console.error('crashing', err)

@@ -24,25 +24,31 @@
  */
 'use strict';
 goog.provide('framework.common.tcuTestCase');
+goog.require('framework.common.tcuSkipList');
 
 goog.scope(function() {
 
     var tcuTestCase = framework.common.tcuTestCase;
+    var tcuSkipList = framework.common.tcuSkipList;
+
+    tcuTestCase.getQueryVal = function(key) {
+        const queryVars = window.location.search.substring(1).split('&');
+        for (let kv of queryVars) {
+            kv = kv.split('=');
+            if (decodeURIComponent(kv[0]) === key)
+                return decodeURIComponent(kv[1]);
+        }
+        return null;
+    };
+
+    tcuTestCase.isQuickMode = () => tcuTestCase.getQueryVal('quick') === '1';
+    tcuTestCase.isQuietMode = () => tcuTestCase.getQueryVal('quiet') === '1';
 
     /**
      * Reads the filter parameter from the URL to filter tests.
      * @return {?string }
      */
-    tcuTestCase.getFilter = function() {
-        var queryVars = window.location.search.substring(1).split('&');
-
-        for (var i = 0; i < queryVars.length; i++) {
-            var value = queryVars[i].split('=');
-            if (decodeURIComponent(value[0]) === 'filter')
-                return decodeURIComponent(value[1]);
-        }
-        return null;
-    };
+    tcuTestCase.getFilter = () => tcuTestCase.getQueryVal('filter');
 
     /**
      * Indicates the state of an iteration operation.
@@ -126,6 +132,9 @@ goog.scope(function() {
     */
     tcuTestCase.Runner.prototype.terminate = function() {
         finishTest();
+        if (!tcuTestCase.isQuietMode()) {
+            console.log('finishTest() after (in ms):', performance.now());
+        }
     };
 
     tcuTestCase.runner = new tcuTestCase.Runner();
@@ -217,8 +226,48 @@ goog.scope(function() {
     * @return {tcuTestCase.DeqpTest}
     */
     tcuTestCase.DeqpTest.prototype.next = function(pattern) {
+        return this._nextHonoringSkipList(pattern);
+    };
+
+    /**
+    * Returns the next test in the hierarchy of tests, honoring the
+    * skip list, and reporting skipped tests.
+    *
+    * @param {?string } pattern Optional pattern to search for
+    * @return {tcuTestCase.DeqpTest}
+    */
+    tcuTestCase.DeqpTest.prototype._nextHonoringSkipList = function(pattern) {
+        var tryAgain = false;
+        var test = null;
+        do {
+            tryAgain = false;
+            test = this._nextIgnoringSkipList(pattern);
+            if (test != null) {
+                // See whether the skip list vetoes the execution of
+                // this test.
+                var fullTestName = test.fullName();
+                var skipDisposition = tcuSkipList.getSkipStatus(fullTestName);
+                if (skipDisposition.skip) {
+                    tryAgain = true;
+                    setCurrentTestName(fullTestName);
+                    checkMessage(false, 'Skipping test due to tcuSkipList: ' + fullTestName);
+                }
+            }
+        } while (tryAgain);
+        return test;
+    };
+
+
+    /**
+    * Returns the next test in the hierarchy of tests, ignoring the
+    * skip list.
+    *
+    * @param {?string } pattern Optional pattern to search for
+    * @return {tcuTestCase.DeqpTest}
+    */
+    tcuTestCase.DeqpTest.prototype._nextIgnoringSkipList = function(pattern) {
         if (pattern)
-            return this.find(pattern);
+            return this._findIgnoringSkipList(pattern);
 
         var test = null;
 
@@ -230,8 +279,7 @@ goog.scope(function() {
 
         // If no more children, get the next brother
         if (test == null && this.parentTest != null) {
-            this.currentTestNdx = 0;
-            test = this.parentTest.next(null);
+            test = this.parentTest._nextIgnoringSkipList(null);
         }
 
         return test;
@@ -247,7 +295,7 @@ goog.scope(function() {
     */
     tcuTestCase.DeqpTest.prototype.nextInRange = function(pattern, range) {
         while (true) {
-            var test = this.next(pattern);
+            var test = this._nextHonoringSkipList(pattern);
             if (!test)
                 return null;
             var topLevelId = tcuTestCase.runner.testCases.currentTestNdx - 1;
@@ -280,16 +328,55 @@ goog.scope(function() {
     };
 
     /**
-    * Find a test with a matching name
-    * Fast-forwards to a test whose full name matches the given pattern
+    * Find a test with a matching name.  Fast-forwards to a test whose
+    * full name matches the given pattern.
     *
     * @param {string} pattern Regular expression to search for
     * @return {?tcuTestCase.DeqpTest } Found test or null.
     */
     tcuTestCase.DeqpTest.prototype.find = function(pattern) {
+        return this._findHonoringSkipList(pattern);
+    };
+
+    /**
+    * Find a test with a matching name. Fast-forwards to a test whose
+    * full name matches the given pattern, honoring the skip list, and
+    * reporting skipped tests.
+    *
+    * @param {string} pattern Regular expression to search for
+    * @return {?tcuTestCase.DeqpTest } Found test or null.
+    */
+    tcuTestCase.DeqpTest.prototype._findHonoringSkipList = function(pattern) {
+        var tryAgain = false;
+        var test = null;
+        do {
+            tryAgain = false;
+            test = this._findIgnoringSkipList(pattern);
+            if (test != null) {
+                // See whether the skip list vetoes the execution of
+                // this test.
+                var fullTestName = test.fullName();
+                var skipDisposition = tcuSkipList.getSkipStatus(fullTestName);
+                if (skipDisposition.skip) {
+                    tryAgain = true;
+                    checkMessage(false, 'Skipping test due to tcuSkipList: ' + fullTestName);
+                }
+            }
+        } while (tryAgain);
+        return test;
+    };
+
+    /**
+    * Find a test with a matching name. Fast-forwards to a test whose
+    * full name matches the given pattern.
+    *
+    * @param {string} pattern Regular expression to search for
+    * @return {?tcuTestCase.DeqpTest } Found test or null.
+    */
+    tcuTestCase.DeqpTest.prototype._findIgnoringSkipList = function(pattern) {
         var test = this;
         while (true) {
-            test = test.next(null);
+            test = test._nextIgnoringSkipList(null);
             if (!test)
                 break;
             if (test.fullName().match(pattern) || test.executeAlways)
@@ -349,21 +436,53 @@ goog.scope(function() {
             try {
                 // If proceeding with the next test, prepare it.
                 var fullTestName = state.currentTest.fullName();
+                var inited = true;
                 if (tcuTestCase.lastResult == tcuTestCase.IterateResult.STOP) {
                     // Update current test name
                     setCurrentTestName(fullTestName);
                     bufferedLogToConsole('Init testcase: ' + fullTestName); //Show also in console so we can see which test crashed the browser's tab
 
                     // Initialize particular test
-                    state.currentTest.init();
+                    inited = state.currentTest.init();
+                    inited = inited === undefined ? true : inited;
 
                     //If it's a leaf test, notify of it's execution.
-                    if (state.currentTest.isLeaf())
+                    if (state.currentTest.isLeaf() && inited)
                         debug('<hr/><br/>Start testcase: ' + fullTestName);
                 }
 
-                // Run the test, save the result.
-                tcuTestCase.lastResult = state.currentTest.iterate();
+                if (inited) {
+                    // Run the test, save the result.
+
+                    const debug = tcuTestCase._debug = tcuTestCase._debug || (() => {
+                        function LapStopwatch() {
+                            this.lap = function() {
+                                const now = performance.now();
+                                const ret = now - this.last;
+                                this.last = now;
+                                return ret;
+                            };
+                            this.lap();
+                        }
+                        return {
+                            stopwatch: new LapStopwatch(),
+                            testDoneCount: 0,
+                        };
+                    })();
+                    const overheadDur = debug.stopwatch.lap();
+
+                    tcuTestCase.lastResult = state.currentTest.iterate();
+
+                    const testDur = debug.stopwatch.lap();
+                    debug.testDoneCount += 1;
+                    console.log(
+                        `[test ${debug.testDoneCount}] Ran in ${testDur}ms`,
+                        `(+ ${overheadDur}ms overhead)`,
+                    );
+                } else {
+                    // Skip uninitialized test.
+                    tcuTestCase.lastResult = tcuTestCase.IterateResult.STOP;
+                }
 
                 // Cleanup
                 if (tcuTestCase.lastResult == tcuTestCase.IterateResult.STOP)
@@ -390,8 +509,8 @@ goog.scope(function() {
             }
 
             tcuTestCase.runner.runCallback(tcuTestCase.runTestCases);
-        } else
+        } else {
             tcuTestCase.runner.terminate();
+        }
     };
-
 });

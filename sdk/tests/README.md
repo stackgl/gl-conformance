@@ -13,7 +13,7 @@ browser's WebGL implementation, either via this test suite or otherwise,
 please report them through your browser vendor's bug tracking system.
 
 FOR WEBGL IMPLEMENTORS: Please follow the instructions below to create
-a formal conformance submission.
+a formal conformance submission:
 
 1. Open webgl-conformance-tests.html in your target browser
 
@@ -23,8 +23,7 @@ a formal conformance submission.
 
 4. Verify that the User Agent and WebGL renderer strings identify your browser and target correctly.
 
-5. Copy the contents of the text summary (starting with "WebGL Conformance Test Results") and send via email to
-   webgl_conformance_submissions@khronos.org
+5. Submit a PR with the results to [https://github.com/KhronosGroup/WebGLConformanceSubmissions].
 
 Please see CONFORMANCE_RULES.txt in this directory for guidelines
 about what constitutes a conformant WebGL implementation.
@@ -32,7 +31,7 @@ about what constitutes a conformant WebGL implementation.
 Usage Notes:
 ------------
 
-There are various URL options you can pass in.
+There are various URL options you can pass in:
 
     run:         Set to 1 to start the tests automatically
 
@@ -66,6 +65,21 @@ There are various URL options you can pass in.
 
                  Note the tests are not required to run with anything other than frames = 1.
 
+To individual tests you can pass:
+
+    showRenderer: 1 to show the renderer or unmasked renderer if `WEBGL_debug_renderer_info`
+                  is available
+
+    runUntilFail: 1 to re-run the test until it fails
+
+    Also, all of [the context creation attributes](https://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2
+    
+                  Example: some-test.html?powerPreference=high-performance&antialias=false&depth=false
+
+The tests at https://www.khronos.org/registry/webgl/sdk/tests/ are kept up-to-date with a GitHub webhook. If you suspect these tests are not in sync with GitHub, please verify the webhook log file here:
+
+   https://www.khronos.org/webgl/pull-github/logs/github.log
+
 History
 -------
 
@@ -75,5 +89,6 @@ The dates below are when work on the conformance suite version was started.
 - 2012/02/23: Version 1.0.1
 - 2012/03/20: Version 1.0.2
 - 2013/02/14: Version 1.0.3
-- 2013/10/11: Version 2.0.0 (beta)
+- 2013/10/11: Version 2.0.0
 - 2014/11/14: Version 1.0.4
+- 2016/11/21: Version 2.0.1

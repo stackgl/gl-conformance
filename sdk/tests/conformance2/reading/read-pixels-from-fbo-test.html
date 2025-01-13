@@ -1,28 +1,7 @@
 <!--
-
-/*
-** Copyright (c) 2015 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-*/
-
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 -->
 
 <!DOCTYPE html>
@@ -42,7 +21,7 @@
 description("Checks that ReadPixels from a fbo works as expected.");
 
 var wtu = WebGLTestUtils;
-var gl = wtu.create3DContext();
+var gl = wtu.create3DContext(undefined, undefined, 2);
 gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
 
 function getChannelCount(format) {
@@ -129,7 +108,7 @@ function convertToSRGB(val) {
   }
 }
 
-function denormalizeColor(srcInternalFormat, destFormat, destType, color) {
+function denormalizeColor(srcInternalFormat, destType, color) {
   var result = color.slice();
   var tol = 0;
 
@@ -139,14 +118,21 @@ function denormalizeColor(srcInternalFormat, destFormat, destType, color) {
     case gl.R8:
     case gl.RG8:
     case gl.RGB8:
-    case gl.RGB565:
     case gl.RGBA8:
     case gl.RGB5_A1:
-    case gl.RGBA4:
     case gl.SRGB8_ALPHA8:
     case gl.RGB10_A2:
       srcIsNormalized = true;
-      tol = 5;
+      tol = 6;
+      break;
+    case gl.RGB565:
+      // RGB565 needs slightly extra tolerance, at least on Google Pixel. crbug.com/682753
+      srcIsNormalized = true;
+      tol = 7;
+      break;
+    case gl.RGBA4:
+      srcIsNormalized = true;
+      tol = 10;
       break;
   }
 
@@ -154,7 +140,7 @@ function denormalizeColor(srcInternalFormat, destFormat, destType, color) {
     return { color: result, tol: tol };
   }
 
-  if (destFormat == gl.SRGB8_ALPHA8) {
+  if (srcInternalFormat == gl.SRGB8_ALPHA8) {
     for (var i = 0; i < 3; ++i) {
       result[i] = convertToSRGB(result[i]);
     }
@@ -188,6 +174,7 @@ function denormalizeColor(srcInternalFormat, destFormat, destType, color) {
       result[2] = result[2] * 0x1F;
       break;
     case gl.UNSIGNED_INT_2_10_10_10_REV:
+      tol = 25;
       result[0] = result[0] * 0x3FF;
       result[1] = result[1] * 0x3FF;
       result[2] = result[2] * 0x3FF;
@@ -210,7 +197,7 @@ function compareColor(buf, index, expectedColor, srcInternalFormat,
   var readChannelCount = getChannelCount(readFormat);
 
   var color = getColor(buf, index, readFormat, readType);
-  expectedColor = denormalizeColor(srcInternalFormat, readFormat, readType, expectedColor);
+  expectedColor = denormalizeColor(srcInternalFormat, readType, expectedColor);
 
   var minChannel = Math.min(srcChannelCount, readChannelCount);
   for (var i = 0; i < minChannel; ++i) {
@@ -653,4 +640,3 @@ var successfullyParsed = true;
 <script src="../../js/js-test-post.js"></script>
 </body>
 </html>
-

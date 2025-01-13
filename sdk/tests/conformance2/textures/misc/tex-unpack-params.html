@@ -1,28 +1,7 @@
 <!--
-
-/*
-** Copyright (c) 2016 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-*/
-
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 -->
 
 <!DOCTYPE html>
@@ -43,6 +22,11 @@
 
 var wtu = WebGLTestUtils;
 var __verbose__ = false;
+
+// Some drivers (for example, NVIDIA Linux) incorrectly require padding for
+// the last row. The below flag is only for testing convenience. Browsers should
+// work around the bug.
+var __apply_alignment_workaround__ = false;
 
 function setupArrayBuffer(size, initData) {
   var array = new Uint8Array(size);
@@ -255,16 +239,25 @@ function runTestIteration2D(gl, testCase, useUnpackBuffer) {
   }
   wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "buffer too small");
 
-  // Uncomment the next line to make the test pass on NVIDIA Linux drivers.
-  // They incorrectly require padding for the last row.
-  // bufferSize += imageSizes.padding;
+  if (__apply_alignment_workaround__)
+    bufferSize += imageSizes.padding;
   array = setupArrayBuffer(bufferSize, true);
   if (useUnpackBuffer) {
     gl.bufferData(gl.PIXEL_UNPACK_BUFFER, array, gl.DYNAMIC_DRAW);
   }
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, testCase.width, testCase.height, 0,
                 gl.RGB, gl.UNSIGNED_BYTE, useUnpackBuffer ? 0 : array);
-  wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texImage2D with correct buffer size should succeed");
+  if (testCase.validUnpackParams2D) {
+    wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texImage2D with correct buffer size should succeed");
+  } else {
+    wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "invalid unpack params combination");
+    if (!useUnpackBuffer) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, testCase.width, testCase.height, 0,
+                    gl.RGB, gl.UNSIGNED_BYTE, null);
+      wtu.glErrorShouldBe(gl, gl.NO_ERROR, "unpack param constraints do not apply if no data are uploaded.");
+    }
+    return;
+  }
 
   var buffer1 = unpackPixels(array, testCase.width, testCase.height, 1, imageSizes);
   var buffer2 = getPixelsFromTexture2D(gl, tex, 0, 0, testCase.width, testCase.height);
@@ -288,16 +281,20 @@ function runTestIteration2D(gl, testCase, useUnpackBuffer) {
   }
   wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "buffer too small");
 
-  // Uncomment the next line to make the test pass on NVIDIA Linux drivers.
-  // They incorrectly require padding for the last row.
-  // bufferSize += imageSizes.padding;
+  if (__apply_alignment_workaround__)
+    bufferSize += imageSizes.padding;
   array = setupArrayBuffer(bufferSize, true);
   if (useUnpackBuffer) {
     gl.bufferData(gl.PIXEL_UNPACK_BUFFER, array, gl.DYNAMIC_DRAW);
   }
   gl.texSubImage2D(gl.TEXTURE_2D, 0, testCase.xoffset, testCase.yoffset, subWidth, subHeight,
                    gl.RGB, gl.UNSIGNED_BYTE, useUnpackBuffer ? 0 : array);
-  wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texSubImage2D with correct buffer size should succeed");
+  if (testCase.validUnpackParamsForSub2D) {
+    wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texSubImage2D with correct buffer size should succeed");
+  } else {
+    wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "invalid unpack params combination");
+    return;
+  }
 
   var buffer1 = unpackPixels(array, subWidth, subHeight, 1, imageSizes);
   var buffer2 = getPixelsFromTexture2D(
@@ -350,16 +347,25 @@ function runTestIteration3D(gl, testCase, useUnpackBuffer) {
   }
   wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "buffer too small");
 
-  // Uncomment the next line to make the test pass on NVIDIA Linux drivers.
-  // They incorrectly require padding for the last row.
-  // bufferSize += imageSizes.padding;
+  if (__apply_alignment_workaround__)
+    bufferSize += imageSizes.padding;
   array = setupArrayBuffer(bufferSize, true);
   if (useUnpackBuffer) {
     gl.bufferData(gl.PIXEL_UNPACK_BUFFER, array, gl.DYNAMIC_DRAW);
   }
   gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB8, testCase.width, testCase.height, testCase.depth, 0,
                 gl.RGB, gl.UNSIGNED_BYTE, useUnpackBuffer ? 0 : array);
-  wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texImage3D with correct buffer size should succeed");
+  if (testCase.validUnpackParams3D) {
+    wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texImage3D with correct buffer size should succeed");
+  } else {
+    wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "invalid unpack params combination");
+    if (!useUnpackBuffer) {
+      gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB8, testCase.width, testCase.height, testCase.depth, 0,
+                    gl.RGB, gl.UNSIGNED_BYTE, null);
+      wtu.glErrorShouldBe(gl, gl.NO_ERROR, "unpack param constraints do not apply if no data are uploaded.");
+    }
+    return;
+  }
 
   var buffer1 = unpackPixels(array, testCase.width, testCase.height, testCase.depth, imageSizes);
   var buffer2 = getPixelsFromTexture3D(
@@ -385,9 +391,8 @@ function runTestIteration3D(gl, testCase, useUnpackBuffer) {
   }
   wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "buffer too small");
 
-  // Uncomment the next line to make the test pass on NVIDIA Linux drivers.
-  // They incorrectly require padding for the last row.
-  // bufferSize += imageSizes.padding;
+  if (__apply_alignment_workaround__)
+    bufferSize += imageSizes.padding;
   array = setupArrayBuffer(bufferSize, true);
   if (useUnpackBuffer) {
     gl.bufferData(gl.PIXEL_UNPACK_BUFFER, array, gl.DYNAMIC_DRAW);
@@ -395,7 +400,12 @@ function runTestIteration3D(gl, testCase, useUnpackBuffer) {
   gl.texSubImage3D(gl.TEXTURE_3D, 0, testCase.xoffset, testCase.yoffset, testCase.zoffset,
                    subWidth, subHeight, subDepth,
                    gl.RGB, gl.UNSIGNED_BYTE, useUnpackBuffer ? 0 : array);
-  wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texSubImage3D with correct buffer size should succeed");
+  if (testCase.validUnpackParamsForSub3D) {
+    wtu.glErrorShouldBe(gl, gl.NO_ERROR, "texSubImage3D with correct buffer size should succeed");
+  } else {
+    wtu.glErrorShouldBe(gl, gl.INVALID_OPERATION, "invalid unpack params combination");
+    return;
+  }
 
   buffer1 = unpackPixels(array, subWidth, subHeight, subDepth, imageSizes);
   buffer2 = getPixelsFromTexture3D(gl, tex, testCase.xoffset, testCase.yoffset, testCase.zoffset,
@@ -412,7 +422,7 @@ function runTestIteration3D(gl, testCase, useUnpackBuffer) {
 }
 
 function runTests() {
-  var gl = wtu.create3DContext("example");
+  var gl = wtu.create3DContext("example", undefined, 2);
   if (!gl) {
     testFailed("Fail to get a WebGL context");
     return;
@@ -421,85 +431,137 @@ function runTests() {
   // For 2D cases, depth, zoffset, imageHeight, skipImages are ignored.
   var testCases = [
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 5, height: 7, depth: 4, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 2, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 6, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 5, height: 8, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 0, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
 
     // ROW_LENGTH == width
     { width: 10, height: 9, depth: 2, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 10, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 10, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
 
     // ROW_LENGTH < width
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 2, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 4, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
 
     // ROW_LENGTH > width
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 6, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 6, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 7, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 2, rowLength: 7, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 8, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 8, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 5, height: 7, depth: 5, xoffset: 2, yoffset: 3, zoffset: 2,
-      alignment: 8, rowLength: 9, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 9, imageHeight: 0, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
 
     // IMAGE_HEIGHT == height
     { width: 6, height: 7, depth: 4, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 0, imageHeight: 7, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 0, imageHeight: 7, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
 
     // IMAGE_HEIGHT < height
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 2, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 0, imageHeight: 6, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
 
     // IMAGE_HEIGHT > height
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 0, imageHeight: 8, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 0, imageHeight: 8, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 6, height: 7, depth: 3, xoffset: 2, yoffset: 2, zoffset: 1,
-      alignment: 2, rowLength: 0, imageHeight: 9, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 2, rowLength: 0, imageHeight: 9, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 7, height: 7, depth: 3, xoffset: 2, yoffset: 4, zoffset: 1,
-      alignment: 4, rowLength: 0, imageHeight: 10, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 4, rowLength: 0, imageHeight: 10, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
     { width: 8, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 0, imageHeight: 11, skipPixels: 0, skipRows: 0, skipImages: 0 },
+      alignment: 8, rowLength: 0, imageHeight: 11, skipPixels: 0, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: true, validUnpackParamsForSub3D: true },
 
     // SKIP parameters
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 0, imageHeight: 0, skipPixels: 10, skipRows: 0, skipImages: 0 },
+      alignment: 1, rowLength: 0, imageHeight: 0, skipPixels: 10, skipRows: 0, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 0, imageHeight: 0, skipPixels: 2, skipRows: 8, skipImages: 0 },
+      alignment: 2, rowLength: 0, imageHeight: 0, skipPixels: 2, skipRows: 8, skipImages: 0,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 0, imageHeight: 0, skipPixels: 3, skipRows: 5, skipImages: 1 },
+      alignment: 4, rowLength: 0, imageHeight: 0, skipPixels: 3, skipRows: 5, skipImages: 1,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 8, rowLength: 0, imageHeight: 0, skipPixels: 7, skipRows: 0, skipImages: 2 },
+      alignment: 8, rowLength: 0, imageHeight: 0, skipPixels: 7, skipRows: 0, skipImages: 2,
+      validUnpackParams2D: false, validUnpackParams3D: false },
 
     // all mixed.
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 1, rowLength: 6, imageHeight: 6, skipPixels: 3, skipRows: 5, skipImages: 1 },
+      alignment: 1, rowLength: 6, imageHeight: 6, skipPixels: 3, skipRows: 5, skipImages: 1,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 2, rowLength: 4, imageHeight: 8, skipPixels: 7, skipRows: 2, skipImages: 2 },
+      alignment: 2, rowLength: 4, imageHeight: 8, skipPixels: 7, skipRows: 2, skipImages: 2,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 5, height: 7, depth: 3, xoffset: 2, yoffset: 3, zoffset: 1,
-      alignment: 4, rowLength: 10, imageHeight: 2, skipPixels: 0, skipRows: 3, skipImages: 1 },
+      alignment: 4, rowLength: 10, imageHeight: 2, skipPixels: 0, skipRows: 3, skipImages: 1,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
     { width: 1, height: 1, depth: 1, xoffset: 0, yoffset: 0, zoffset: 0,
-      alignment: 2, rowLength: 3, imageHeight: 2, skipPixels: 3, skipRows: 5, skipImages: 1 },
+      alignment: 2, rowLength: 3, imageHeight: 2, skipPixels: 3, skipRows: 5, skipImages: 1,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 17, height: 6, depth: 4, xoffset: 12, yoffset: 3, zoffset: 2,
-      alignment: 2, rowLength: 4, imageHeight: 8, skipPixels: 1, skipRows: 4, skipImages: 2 },
+      alignment: 2, rowLength: 4, imageHeight: 8, skipPixels: 1, skipRows: 4, skipImages: 2,
+      validUnpackParams2D: false, validUnpackParams3D: false },
     { width: 8, height: 17, depth: 3, xoffset: 2, yoffset: 13, zoffset: 1,
-      alignment: 4, rowLength: 9, imageHeight: 2, skipPixels: 0, skipRows: 3, skipImages: 1 },
+      alignment: 4, rowLength: 9, imageHeight: 2, skipPixels: 0, skipRows: 3, skipImages: 1,
+      validUnpackParams2D: true, validUnpackParamsForSub2D: true,
+      validUnpackParams3D: false },
   ];
 
   // Upload textures from client data

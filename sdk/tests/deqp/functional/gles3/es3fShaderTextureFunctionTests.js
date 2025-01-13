@@ -46,6 +46,11 @@ goog.scope(function() {
     var gluShaderUtil = framework.opengl.gluShaderUtil;
     var glsShaderRenderCase = modules.shared.glsShaderRenderCase;
 
+    let canvasWH = 256;
+    if (tcuTestCase.isQuickMode()) {
+        canvasWH = 32;
+    }
+
     /**
      * @enum
      */
@@ -1085,9 +1090,9 @@ goog.scope(function() {
      * @param {es3fShaderTextureFunctionTests.TexLookupParams} p
      */
     es3fShaderTextureFunctionTests.evalTexelFetch2D = function(c, p) {
-        /** @type {number} */ var x    = Math.floor(c.in_[0][0]) + p.offset[0];
-        /** @type {number} */ var y    = Math.floor(c.in_[0][1]) + p.offset[1];
-        /** @type {number} */ var lod = Math.floor(c.in_[1][0]);
+        /** @type {number} */ var x    = Math.trunc(c.in_[0][0]) + p.offset[0];
+        /** @type {number} */ var y    = Math.trunc(c.in_[0][1]) + p.offset[1];
+        /** @type {number} */ var lod = Math.trunc(c.in_[1][0]);
         c.color = deMath.add(deMath.multiply(c.textures[0].tex2D.getLevel(lod).getPixel(x, y), p.scale), p.bias);
     };
 
@@ -1096,10 +1101,10 @@ goog.scope(function() {
      * @param {es3fShaderTextureFunctionTests.TexLookupParams} p
      */
     es3fShaderTextureFunctionTests.evalTexelFetch2DArray = function(c, p) {
-        /** @type {number} */ var x    = Math.floor(c.in_[0][0]) + p.offset[0];
-        /** @type {number} */ var y    = Math.floor(c.in_[0][1]) + p.offset[1];
-        /** @type {number} */ var l    = Math.floor(c.in_[0][2]);
-        /** @type {number} */ var lod = Math.floor(c.in_[1][0]);
+        /** @type {number} */ var x    = Math.trunc(c.in_[0][0]) + p.offset[0];
+        /** @type {number} */ var y    = Math.trunc(c.in_[0][1]) + p.offset[1];
+        /** @type {number} */ var l    = Math.trunc(c.in_[0][2]);
+        /** @type {number} */ var lod = Math.trunc(c.in_[1][0]);
         c.color = deMath.add(deMath.multiply(c.textures[0].tex2DArray.getLevel(lod).getPixel(x, y, l), p.scale), p.bias);
     };
 
@@ -1108,10 +1113,10 @@ goog.scope(function() {
      * @param {es3fShaderTextureFunctionTests.TexLookupParams} p
      */
     es3fShaderTextureFunctionTests.evalTexelFetch3D = function(c, p) {
-        /** @type {number} */ var x    = Math.floor(c.in_[0][0]) + p.offset[0];
-        /** @type {number} */ var y    = Math.floor(c.in_[0][1]) + p.offset[1];
-        /** @type {number} */ var z    = Math.floor(c.in_[0][2]) + p.offset[2];
-        /** @type {number} */ var lod = Math.floor(c.in_[1][0]);
+        /** @type {number} */ var x    = Math.trunc(c.in_[0][0]) + p.offset[0];
+        /** @type {number} */ var y    = Math.trunc(c.in_[0][1]) + p.offset[1];
+        /** @type {number} */ var z    = Math.trunc(c.in_[0][2]) + p.offset[2];
+        /** @type {number} */ var lod = Math.trunc(c.in_[1][0]);
         c.color = deMath.add(deMath.multiply(c.textures[0].tex3D.getLevel(lod).getPixel(x, y, z), p.scale), p.bias);
     };
 
@@ -1248,11 +1253,13 @@ goog.scope(function() {
         /** @type {tcuTexture.TextureFormat} */ var texFmt = gluTextureUtil.mapGLInternalFormat(this.m_textureSpec.format);
         /** @type {tcuTextureUtil.TextureFormatInfo} */ var fmtInfo = tcuTextureUtil.getTextureFormatInfo(texFmt);
         /** @type {Array<number>} */ var viewportSize = this.getViewportSize();
-        /** @type {boolean} */ var isProj = es3fShaderTextureFunctionTests.functionHasProj(this.m_lookupSpec.func);
+        /** @type {boolean} */ var useProj = es3fShaderTextureFunctionTests.functionHasProj(this.m_lookupSpec.func) &&
+                                             !es3fShaderTextureFunctionTests.functionHasGrad(this.m_lookupSpec.func) &&
+                                             !es3fShaderTextureFunctionTests.functionHasLod(this.m_lookupSpec.func);
         /** @type {boolean} */ var isAutoLod = es3fShaderTextureFunctionTests.functionHasAutoLod(
             this.m_isVertexCase ? gluShaderProgram.shaderType.VERTEX : gluShaderProgram.shaderType.FRAGMENT,
             this.m_lookupSpec.func); // LOD can vary significantly
-        /** @type {number} */ var proj = isProj ?
+        /** @type {number} */ var proj = useProj ?
             1.0 / this.m_lookupSpec.minCoord[this.m_lookupSpec.func === es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ3 ? 2 : 3] :
             1.0;
 
@@ -1338,7 +1345,7 @@ goog.scope(function() {
 
             case es3fShaderTextureFunctionTests.TextureType.TEXTURETYPE_2D_ARRAY:
                 /** @type {number} */ var layerStep = 1.0 / this.m_textureSpec.depth;
-                levelStep = isAutoLod ? 0.0 : 1.0 / Math.max(1, this.m_textureSpec.numLevels - 1) * this.m_textureSpec.depth;
+                levelStep = isAutoLod ? 0.0 : 1.0 / (Math.max(1, this.m_textureSpec.numLevels - 1) * this.m_textureSpec.depth);
                 cScale = deMath.subtract(fmtInfo.valueMax, fmtInfo.valueMin);
                 cBias = fmtInfo.valueMin;
                 baseCellSize = Math.min(this.m_textureSpec.width / 4, this.m_textureSpec.height / 4);
@@ -1729,7 +1736,7 @@ goog.scope(function() {
             if (!this.testTextureSize(testSizes[currentIteration - 1]))
                 testFailedOptions('Fail: Case ' + (currentIteration - 1) + ' Got unexpected texture size', false);
             else
-				testPassedOptions('Pass', true);
+                testPassedOptions('Pass', true);
 
             return tcuTestCase.IterateResult.CONTINUE;
         }
@@ -1810,6 +1817,7 @@ goog.scope(function() {
         gl.texParameteri(textureTarget, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(textureTarget, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(textureTarget, gl.TEXTURE_BASE_LEVEL, testSize.lodBase);
+        gl.texParameteri(textureTarget, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
 
         // set up texture
 
@@ -2381,7 +2389,8 @@ goog.scope(function() {
                 es3fShaderTextureFunctionTests.getCaseSpec('isampler3d_bias', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.9, 1.05, -0.08, -0.75], [-1.13, -1.7, -1.7, -0.75],    true,    -2.0,    2.0,    true, [3, -8, 7],    tex3DInt, es3fShaderTextureFunctionTests.evalTexture3DProjOffsetBias, es3fShaderTextureFunctionTests.CaseFlags.FRAGMENT),
                 es3fShaderTextureFunctionTests.getCaseSpec('usampler3d_bias', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.9, 1.05, -0.08, -0.75], [-1.13, -1.7, -1.7, -0.75],    true,    -2.0,    2.0,    true, [-8, 7, 3],    tex3DUint, es3fShaderTextureFunctionTests.evalTexture3DProjOffsetBias, es3fShaderTextureFunctionTests.CaseFlags.FRAGMENT),
 
-                es3fShaderTextureFunctionTests.getCaseSpec('sampler2dshadow', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.2, 0.6, 0.0, 1.5], [-2.25, -3.45, 1.5, 1.5],    false,    0.0,    0.0,    true, [-8, 7, 0],    tex2DShadow, es3fShaderTextureFunctionTests.evalTexture2DShadowProjOffset, es3fShaderTextureFunctionTests.CaseFlags.VERTEX),
+                // NOTE: offset changed from [-8, 7, 0] in native dEQP to [7, -8, 0] per https://github.com/KhronosGroup/WebGL/issues/2033
+                es3fShaderTextureFunctionTests.getCaseSpec('sampler2dshadow', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.2, 0.6, 0.0, 1.5], [-2.25, -3.45, 1.5, 1.5],    false,    0.0,    0.0,    true, [7, -8, 0],    tex2DShadow, es3fShaderTextureFunctionTests.evalTexture2DShadowProjOffset, es3fShaderTextureFunctionTests.CaseFlags.VERTEX),
                 es3fShaderTextureFunctionTests.getCaseSpec('sampler2dshadow', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.2, 0.6, 0.0, 1.5], [-2.25, -3.45, 1.5, 1.5],    false,    0.0,    0.0,    true, [7, -8, 0],    tex2DMipmapShadow, es3fShaderTextureFunctionTests.evalTexture2DShadowProjOffset, es3fShaderTextureFunctionTests.CaseFlags.FRAGMENT),
                 es3fShaderTextureFunctionTests.getCaseSpec('sampler2dshadow_bias', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJ, [0.2, 0.6, 0.0, 1.5], [-2.25, -3.45, 1.5, 1.5],    true,    -2.0,    2.0,    true, [-8, 7, 0],    tex2DShadow, es3fShaderTextureFunctionTests.evalTexture2DShadowProjOffsetBias,    es3fShaderTextureFunctionTests.CaseFlags.FRAGMENT)
             ];
@@ -2474,7 +2483,7 @@ goog.scope(function() {
 
                 es3fShaderTextureFunctionTests.getCaseSpec('sampler2dshadow', es3fShaderTextureFunctionTests.TexFunction.TEXTUREPROJLOD, [0.2, 0.6, 0.0, 1.5], [-2.25, -3.45, 1.5, 1.5],    false,    -1.0,    9.0,    true, [-8, 7, 0],    tex2DMipmapShadow, es3fShaderTextureFunctionTests.evalTexture2DShadowProjLodOffset,    es3fShaderTextureFunctionTests.CaseFlags.BOTH)
             ];
-        	es3fShaderTextureFunctionTests.createCaseGroup(this, 'textureprojlodoffset', 'textureProjLodOffset() Tests', textureProjLodOffsetCases);
+            es3fShaderTextureFunctionTests.createCaseGroup(this, 'textureprojlodoffset', 'textureProjLodOffset() Tests', textureProjLodOffsetCases);
 
             // textureGrad() cases
             // \note Only one of dudx, dudy, dvdx, dvdy is non-zero since spec allows approximating p from derivates by various methods.
@@ -2674,6 +2683,11 @@ goog.scope(function() {
     */
     es3fShaderTextureFunctionTests.run = function(context, range) {
         gl = context;
+
+        const canvas = gl.canvas;
+        canvas.width = canvasWH;
+        canvas.height = canvasWH;
+
         //Set up Test Root parameters
         var state = tcuTestCase.runner;
         state.setRoot(new es3fShaderTextureFunctionTests.ShaderTextureFunctionTests());

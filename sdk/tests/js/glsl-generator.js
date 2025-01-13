@@ -1,24 +1,7 @@
 /*
-** Copyright (c) 2012 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 GLSLGenerator = (function() {
 
@@ -1103,13 +1086,13 @@ return {
    *    float, vec2, vec3, vec4 in that order.
    *
    * tolerance: (optional)
-   *    Allow some tolerance in the comparisons. The tolerance is applied to 
-   *    both vertex and fragment shaders. The default tolerance is 0, meaning 
+   *    Allow some tolerance in the comparisons. The tolerance is applied to
+   *    both vertex and fragment shaders. The default tolerance is 0, meaning
    *    the values have to be identical.
    *
    * fragmentTolerance: (optional)
-   *    Specify a tolerance which only applies to fragment shaders. The 
-   *    fragment-only tolerance will override the shared tolerance for 
+   *    Specify a tolerance which only applies to fragment shaders. The
+   *    fragment-only tolerance will override the shared tolerance for
    *    fragment shaders if both are specified. Fragment shaders usually
    *    use mediump float precision so they sometimes require higher tolerance
    *    than vertex shaders which use highp by default.
@@ -1229,15 +1212,15 @@ return {
    *
    * extra: (optional)
    *    Extra GLSL code inserted at the top of each test's shader.
-   * 
+   *
    * tolerance: (optional)
-   *    Allow some tolerance in the comparisons. The tolerance is applied to 
-   *    both vertex and fragment shaders. The default tolerance is 0, meaning 
+   *    Allow some tolerance in the comparisons. The tolerance is applied to
+   *    both vertex and fragment shaders. The default tolerance is 0, meaning
    *    the values have to be identical.
    *
    * fragmentTolerance: (optional)
-   *    Specify a tolerance which only applies to fragment shaders. The 
-   *    fragment-only tolerance will override the shared tolerance for 
+   *    Specify a tolerance which only applies to fragment shaders. The
+   *    fragment-only tolerance will override the shared tolerance for
    *    fragment shaders if both are specified. Fragment shaders usually
    *    use mediump float precision so they sometimes require higher tolerance
    *    than vertex shaders which use highp.

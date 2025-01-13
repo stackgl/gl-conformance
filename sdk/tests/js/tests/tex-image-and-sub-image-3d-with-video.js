@@ -1,24 +1,7 @@
 /*
-** Copyright (c) 2015 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 
 // This block needs to be outside the onload handler in order for this
@@ -32,7 +15,7 @@ var debug = function(msg) {
   old(msg);
 };
 
-function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath) {
+function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath, defaultContextVersion) {
     var wtu = WebGLTestUtils;
     var tiu = TexImageUtils;
     var gl = null;
@@ -44,14 +27,16 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
     // differently. Some might be GPU accelerated, some might not. Etc...
     var videos = [
       { src: resourcePath + "red-green.mp4"         , type: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"', },
+      { src: resourcePath + "red-green.bt601.vp9.webm", type: 'video/webm; codecs="vp9"',                   },
       { src: resourcePath + "red-green.webmvp8.webm", type: 'video/webm; codecs="vp8, vorbis"',           },
-      { src: resourcePath + "red-green.theora.ogv",   type: 'video/ogg; codecs="theora, vorbis"',         },
     ];
 
     function init()
     {
         description('Verify texImage3D and texSubImage3D code paths taking video elements (' + internalFormat + '/' + pixelFormat + '/' + pixelType + ')');
 
+        // Set the default context version while still allowing the webglVersion URL query string to override it.
+        wtu.setDefault3DContextVersion(defaultContextVersion);
         gl = wtu.create3DContext("example");
 
         if (!prologue(gl)) {
@@ -74,10 +59,17 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         runTest();
     }
 
-    function runOneIteration(videoElement, flipY, topColor, bottomColor, program, bindingTarget)
+    function runOneIteration(videoElement, flipY, useTexSubImage3D, topColor, bottomColor, program, bindingTarget,
+                             depth, sourceSubRectangle, unpackImageHeight, rTextureCoord)
     {
-        debug('Testing ' + ' with flipY=' + flipY + ' bindingTarget=' +
-              (bindingTarget == gl.TEXTURE_3D ? 'TEXTURE_3D' : 'TEXTURE_2D_ARRAY'));
+        debug('Testing ' +
+              (useTexSubImage3D ? "texSubImage3D" : "texImage3D") +
+              ' with flipY=' + flipY + ' bindingTarget=' +
+              (bindingTarget == gl.TEXTURE_3D ? 'TEXTURE_3D' : 'TEXTURE_2D_ARRAY') +
+              (sourceSubRectangle ? ', sourceSubRectangle=' + sourceSubRectangle : '') +
+              (unpackImageHeight ? ', unpackImageHeight=' + unpackImageHeight : '') +
+              ', depth=' + depth +
+              ', rTextureCoord=' + rTextureCoord);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // Disable any writes to the alpha channel
         gl.colorMask(1, 1, 1, 0);
@@ -93,14 +85,35 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         // Set up pixel store parameters
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+        var uploadWidth = videoElement.width;
+        var uploadHeight = videoElement.height;
+        if (sourceSubRectangle) {
+            gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, sourceSubRectangle[0]);
+            gl.pixelStorei(gl.UNPACK_SKIP_ROWS, sourceSubRectangle[1]);
+            uploadWidth = sourceSubRectangle[2];
+            uploadHeight = sourceSubRectangle[3];
+        }
+        if (unpackImageHeight) {
+            gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, unpackImageHeight);
+        }
         // Upload the videoElement into the texture
-        // Initialize the texture to black first
-        var width = videoElement.videoWidth;
-        var height = videoElement.videoHeight;
-        gl.texImage3D(bindingTarget, 0, gl[internalFormat],
-                      width, height, 1 /* depth */, 0,
-                      gl[pixelFormat], gl[pixelType], null);
-        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, gl[pixelFormat], gl[pixelType], videoElement);
+        if (useTexSubImage3D) {
+            // Initialize the texture to black first
+            gl.texImage3D(bindingTarget, 0, gl[internalFormat],
+                          uploadWidth, uploadHeight, depth, 0,
+                          gl[pixelFormat], gl[pixelType], null);
+            gl.texSubImage3D(bindingTarget, 0, 0, 0, 0,
+                             uploadWidth, uploadHeight, depth,
+                             gl[pixelFormat], gl[pixelType], videoElement);
+        } else {
+            gl.texImage3D(bindingTarget, 0, gl[internalFormat],
+                          uploadWidth, uploadHeight, depth, 0,
+                          gl[pixelFormat], gl[pixelType], videoElement);
+        }
+        gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+        gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+        gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, 0);
 
         var c = document.createElement("canvas");
         c.width = 16;
@@ -110,11 +123,18 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
         ctx.drawImage(videoElement, 0, 0, 16, 16);
         document.body.appendChild(c);
 
+        var rCoordLocation = gl.getUniformLocation(program, 'uRCoord');
+        if (!rCoordLocation) {
+            testFailed('Shader incorrectly set up; couldn\'t find uRCoord uniform');
+            return;
+        }
+        gl.uniform1f(rCoordLocation, rTextureCoord);
+
         // Draw the triangles
         wtu.clearAndDrawUnitQuad(gl, [0, 0, 0, 255]);
         // Check a few pixels near the top and bottom and make sure they have
         // the right color.
-        var tolerance = 5;
+        const tolerance = 6;
         debug("Checking lower left corner");
         wtu.checkCanvasRect(gl, 4, 4, 2, 2, bottomColor,
                             "shouldBe " + bottomColor, tolerance);
@@ -126,8 +146,24 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
     function runTest(videoElement)
     {
         var cases = [
-            { flipY: true, topColor: redColor, bottomColor: greenColor },
-            { flipY: false, topColor: greenColor, bottomColor: redColor },
+            // No UNPACK_IMAGE_HEIGHT specified.
+            { flipY: false, sourceSubRectangle: [32, 16, 16, 16], depth: 5, rTextureCoord: 0,
+              topColor: redColor, bottomColor: redColor },
+            // Note that an rTextureCoord of 4.0 satisfies the need to
+            // have it be >= 1.0 for the TEXTURE_3D case, and also its
+            // use as an index in the TEXTURE_2D_ARRAY case.
+            { flipY: false, sourceSubRectangle: [32, 16, 16, 16], depth: 5, rTextureCoord: 4,
+              topColor: greenColor, bottomColor: greenColor },
+            { flipY: false, sourceSubRectangle: [24, 48, 32, 32], depth: 1, rTextureCoord: 0,
+              topColor: greenColor, bottomColor: redColor },
+            { flipY: true, sourceSubRectangle: [24, 48, 32, 32], depth: 1, rTextureCoord: 0,
+              topColor: redColor, bottomColor: greenColor },
+
+            // Use UNPACK_IMAGE_HEIGHT to skip some pixels.
+            { flipY: false, sourceSubRectangle: [32, 16, 16, 16], depth: 2, unpackImageHeight: 64, rTextureCoord: 0,
+              topColor: redColor, bottomColor: redColor },
+            { flipY: false, sourceSubRectangle: [32, 16, 16, 16], depth: 2, unpackImageHeight: 64, rTextureCoord: 1,
+              topColor: greenColor, bottomColor: greenColor },
         ];
 
         function runTexImageTest(bindingTarget) {
@@ -155,6 +191,7 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
                     debug("");
                     debug("testing: " + info.type);
                     video = document.createElement("video");
+                    video.muted = true;
                     var canPlay = true;
                     if (!video.canPlayType) {
                       testFailed("video.canPlayType required method missing");
@@ -175,9 +212,18 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
                 }
                 function runTest() {
                     for (var i in cases) {
-                        runOneIteration(video, cases[i].flipY,
+                        runOneIteration(video, cases[i].flipY, false,
                                         cases[i].topColor, cases[i].bottomColor,
-                                        program, bindingTarget);
+                                        program, bindingTarget, cases[i].depth,
+                                        cases[i].sourceSubRectangle,
+                                        cases[i].unpackImageHeight,
+                                        cases[i].rTextureCoord);
+                        runOneIteration(video, cases[i].flipY, true,
+                                        cases[i].topColor, cases[i].bottomColor,
+                                        program, bindingTarget, cases[i].depth,
+                                        cases[i].sourceSubRectangle,
+                                        cases[i].unpackImageHeight,
+                                        cases[i].rTextureCoord);
                     }
                     runNextVideo();
                 }

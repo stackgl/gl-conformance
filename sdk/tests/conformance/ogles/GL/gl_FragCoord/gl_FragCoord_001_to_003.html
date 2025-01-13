@@ -1,29 +1,9 @@
 <!DOCTYPE html>
-<!-- this file is auto-generated. DO NOT EDIT.
-
-/*
-** Copyright (c) 2012 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-*/
-
+<!-- this file is auto-generated. DO NOT EDIT. -->
+<!--
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 -->
 <html>
 <head>
@@ -46,20 +26,20 @@ OpenGLESTestRunner.run({
   "tests": [
     {
       "referenceProgram": {
-        "vertexShader": "../default/default.vert", 
+        "vertexShader": "../default/default.vert",
         "fragmentShader": "gl_FragCoord_xy_frag_ref.frag"
-      }, 
-      "model": null, 
+      },
+      "model": null,
       "testProgram": {
-        "vertexShader": "../default/default.vert", 
+        "vertexShader": "../default/default.vert",
         "fragmentShader": "gl_FragCoord_xy_frag.frag"
-      }, 
-      "name": "gl_FragCoord_xy_frag.test.html", 
+      },
+      "name": "gl_FragCoord_xy_frag.test.html",
       "pattern": "compare"
-    }, 
+    },
     {
       "referenceProgram": {
-        "vertexShader": "gl_FragCoord_z_frag_ref.vert", 
+        "vertexShader": "gl_FragCoord_z_frag_ref.vert",
         "fragmentShader": "gl_FragCoord_z_frag_ref.frag",
         "builtin_uniforms": {
           "min_required": 2,
@@ -69,38 +49,38 @@ OpenGLESTestRunner.run({
             "gl_DepthRange.diff"
           ],
         }
-      }, 
-      "model": null, 
+      },
+      "model": null,
       "testProgram": {
-        "vertexShader": "../default/default.vert", 
+        "vertexShader": "../default/default.vert",
         "fragmentShader": "gl_FragCoord_z_frag.frag"
-      }, 
-      "name": "gl_FragCoord_z_frag.test.html", 
+      },
+      "name": "gl_FragCoord_z_frag.test.html",
       "pattern": "compare"
-    }, 
+    },
     {
       "referenceProgram": {
-        "vertexShader": "../default/default.vert", 
+        "vertexShader": "../default/default.vert",
         "uniforms": {
           "result": {
-            "count": 1, 
-            "type": "uniform4fv", 
+            "count": 1,
+            "type": "uniform4fv",
             "value": [
-              0.5, 
-              0.5, 
-              0.5, 
+              0.5,
+              0.5,
+              0.5,
               1.0
             ]
           }
-        }, 
+        },
         "fragmentShader": "../default/expected.frag"
-      }, 
-      "model": null, 
+      },
+      "model": null,
       "testProgram": {
-        "vertexShader": "../default/default.vert", 
+        "vertexShader": "../default/default.vert",
         "fragmentShader": "gl_FragCoord_w_frag.frag"
-      }, 
-      "name": "gl_FragCoord_w_frag.test.html", 
+      },
+      "name": "gl_FragCoord_w_frag.test.html",
       "pattern": "compare"
     }
   ]

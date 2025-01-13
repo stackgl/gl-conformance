@@ -1,34 +1,20 @@
 /*
-** Copyright (c) 2016 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 
-function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath) {
+function generateTest(internalFormat, pixelFormat, pixelType, prologue, resourcePath, defaultContextVersion) {
     var wtu = WebGLTestUtils;
     var tiu = TexImageUtils;
     var gl = null;
     var successfullyParsed = false;
-    var redColor = [255, 0, 0];
-    var greenColor = [0, 255, 0];
-    var bitmaps = [];
+
+    var videos = [
+        { src: resourcePath + "red-green.mp4"           , type: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"', },
+        { src: resourcePath + "red-green.webmvp8.webm"  , type: 'video/webm; codecs="vp8, vorbis"',           },
+        { src: resourcePath + "red-green.bt601.vp9.webm", type: 'video/webm; codecs="vp9"',                   },
+    ];
 
     function init()
     {
@@ -39,6 +25,8 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
             return;
         }
 
+        // Set the default context version while still allowing the webglVersion URL query string to override it.
+        wtu.setDefault3DContextVersion(defaultContextVersion);
         gl = wtu.create3DContext("example");
 
         if (!prologue(gl)) {
@@ -46,83 +34,48 @@ function generateTest(internalFormat, pixelFormat, pixelType, prologue, resource
             return;
         }
 
-        switch (gl[pixelFormat]) {
-          case gl.RED:
-          case gl.RED_INTEGER:
-            greenColor = [0, 0, 0];
-            break;
-          default:
-            break;
-        }
-
         gl.clearColor(0,0,0,1);
         gl.clearDepth(1);
 
-        video = document.createElement("video");
-        video.oncanplaythrough = function() {
-            var p1 = createImageBitmap(video, {imageOrientation: "none"}).then(function(imageBitmap) { bitmaps.noFlipY = imageBitmap });
-            var p2 = createImageBitmap(video, {imageOrientation: "flipY"}).then(function(imageBitmap) { bitmaps.flipY = imageBitmap });
-            Promise.all([p1, p2]).then(function() {
-                runTest();
-            }, function() {
-                // createImageBitmap with options could be rejected if it is not supported
+        var videoNdx = 0;
+        var video;
+        function runNextVideo() {
+            if (video) {
+                video.pause();
+            }
+
+            if (videoNdx == videos.length) {
                 finishTest();
                 return;
+            }
+
+            var info = videos[videoNdx++];
+            debug("");
+            debug("testing: " + info.type);
+            video = document.createElement("video");
+            video.muted = true;
+            var canPlay = true;
+            if (!video.canPlayType) {
+                testFailed("video.canPlayType required method missing");
+                runNextVideo();
+                return;
+            }
+
+            if(!video.canPlayType(info.type).replace(/no/, '')) {
+                debug(info.type + " unsupported");
+                runNextVideo();
+                return;
+            };
+
+            document.body.appendChild(video);
+            video.type = info.type;
+            video.src = info.src;
+            wtu.startPlayingAndWaitForVideo(video, async function() {
+                await runImageBitmapTest(video, 1, internalFormat, pixelFormat, pixelType, gl, tiu, wtu, true);
+                runNextVideo();
             });
         }
-        video.src = resourcePath + "red-green.theora.ogv";
-        document.body.appendChild(video);
-    }
-
-    function runOneIteration(bindingTarget, program, bitmap, flipY)
-    {
-        debug('Testing ' + ', bindingTarget=' + (bindingTarget == gl.TEXTURE_3D ? 'TEXTURE_3D' : 'TEXTURE_2D_ARRAY'));
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // Enable writes to the RGBA channels
-        gl.colorMask(1, 1, 1, 0);
-        var texture = gl.createTexture();
-        // Bind the texture to texture unit 0
-        gl.bindTexture(bindingTarget, texture);
-        // Set up texture parameters
-        gl.texParameteri(bindingTarget, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(bindingTarget, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(bindingTarget, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(bindingTarget, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(bindingTarget, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        // Upload the image into the texture
-        gl.texImage3D(bindingTarget, 0, gl[internalFormat], bitmap.width, bitmap.height, 1 /* depth */, 0,
-                      gl[pixelFormat], gl[pixelType], null);
-        gl.texSubImage3D(bindingTarget, 0, 0, 0, 0, gl[pixelFormat], gl[pixelType], bitmap);
-
-        var topColor = flipY ? redColor : greenColor;
-        var bottomColor = flipY ? greenColor : redColor;
-
-        // Draw the triangles
-        wtu.clearAndDrawUnitQuad(gl, [0, 0, 0, 255]);
-
-        // Check a few pixels near the top and bottom and make sure they have
-        // the right color.
-        debug("Checking lower left corner");
-        wtu.checkCanvasRect(gl, 4, 4, 2, 2, bottomColor, "shouldBe " + bottomColor);
-        debug("Checking upper left corner");
-        wtu.checkCanvasRect(gl, 4, gl.canvas.height - 8, 2, 2, topColor, "shouldBe " + topColor);
-    }
-
-    function runTest()
-    {
-        var program = tiu.setupTexturedQuadWith3D(gl, internalFormat);
-        runTestOnBindingTarget(gl.TEXTURE_3D, program);
-        program = tiu.setupTexturedQuadWith2DArray(gl, internalFormat);
-        runTestOnBindingTarget(gl.TEXTURE_2D_ARRAY, program);
-
-        wtu.glErrorShouldBe(gl, gl.NO_ERROR, "should be no errors");
-        finishTest();
-    }
-
-    function runTestOnBindingTarget(bindingTarget, program) {
-        runOneIteration(bindingTarget, program, bitmaps.noFlipY, false);
-        runOneIteration(bindingTarget, program, bitmaps.flipY, true);
+        runNextVideo();
     }
 
     return init;

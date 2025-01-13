@@ -1,24 +1,7 @@
 /*
-** Copyright (c) 2012 The Khronos Group Inc.
-**
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-**
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+Copyright (c) 2019 The Khronos Group Inc.
+Use of this source code is governed by an MIT-style license that can be
+found in the LICENSE.txt file.
 */
 
 // Defines a bunch of DesktopGL constants so we can make sure WebGL
@@ -40,6 +23,7 @@ var desktopGL = {
   'STATIC_READ': 0x88E5,
   'CLIP_PLANE0': 0x3000,
   'PERSPECTIVE_CORRECTION_HINT': 0x0C50,
+  'PACK_SWAP_BYTES': 0x0D00,
   'ACCUM_BUFFER_BIT': 0x0200,
   'RGB4': 0x804F,
   'RGB5': 0x8050,
@@ -376,6 +360,7 @@ var desktopGL = {
   'MAJOR_VERSION': 0x821B,
   'MINOR_VERSION': 0x821C,
   'NUM_EXTENSIONS': 0x821D,
+  'EXTENSIONS': 0x1F03,
   'CONTEXT_FLAGS': 0x821E,
   'DEPTH_BUFFER': 0x8223,
   'STENCIL_BUFFER': 0x8224,
@@ -659,6 +644,9 @@ var desktopGL = {
   'MAX_GEOMETRY_UNIFORM_COMPONENTS_ARB': 0x8DDF,
   'MAX_GEOMETRY_OUTPUT_VERTICES_ARB': 0x8DE0,
   'MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS_ARB': 0x8DE1,
+  'SHADER_BINARY_FORMATS': 0x8DF8,
+  'NUM_SHADER_BINARY_FORMATS': 0x8DF9,
+  'SHADER_COMPILER': 0x8DFA,
   'HALF_FLOAT_ARB': 0x140B,
   'HALF_FLOAT': 0x140B,
   'CONSTANT_COLOR': 0x8001,
