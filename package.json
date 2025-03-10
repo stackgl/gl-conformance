@@ -1,5 +1,5 @@
 {
-  "name": "gl-conformance",
+  "name": "@stackgl/gl-conformance",
   "version": "2.1.2",
   "description": "Khronos WebGL conformance test suite",
   "main": "run-test.js",
