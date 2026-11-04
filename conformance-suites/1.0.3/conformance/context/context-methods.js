@@ -9,6 +9,10 @@ const IGNORED_METHODS = [
 
   // For WebXR integration:
   "makeXRCompatible",
+
+  // gl-conformance: runners add these to each context for the harness to call.
+  "destroy",
+  "resize",
 ];
 
 function assertFunction(v, f) {
