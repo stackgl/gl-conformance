@@ -9,7 +9,6 @@
   "context/premultiplyalpha-test.html",
   "extensions/oes-texture-float-with-video.html",
   "extensions/oes-texture-float-with-video.html",
-  "programs/program-test.html",
   "textures/texture-npot-video.html",
   "textures/gl-pixelstorei.html",
   "textures/gl-teximage.html",
