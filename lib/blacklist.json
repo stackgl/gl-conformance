@@ -7,7 +7,6 @@
   "context/context-lost.html",
   "context/context-attribute-preserve-drawing-buffer.html",
   "context/premultiplyalpha-test.html",
-  "extensions/webgl-compressed-texture-s3tc.html",
   "extensions/oes-texture-float-with-video.html",
   "extensions/oes-texture-float-with-video.html",
   "glsl/misc/re-compile-re-link.html",

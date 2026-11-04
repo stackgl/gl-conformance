@@ -5,6 +5,9 @@
   "resources/webgl-test-utils.js": {
     "path": "shims/webgl-test-utils.js"
   },
+  "resources/compressed-texture-utils.js": {
+    "path": "shims/compressed-texture-utils.js"
+  },
   "resources/glsl-conformance-test.js": {
     "path": "shims/glsl-conformance-test.js"
   },

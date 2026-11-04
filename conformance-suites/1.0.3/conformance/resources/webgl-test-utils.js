@@ -1245,6 +1245,14 @@ var getUrlOptions = function() {
 };
 
 /**
+ * Get the default context version for create3DContext.
+ * It's the URI option |webglVersion| if there is one, otherwise 1.
+ */
+var getDefault3DContextVersion = function() {
+  return parseInt(getUrlOptions().webglVersion, 10) || 1;
+};
+
+/**
  * Creates a webgl context.
  * @param {!Canvas|string} opt_canvas The canvas tag to get
  *     context from. If one is not passed in one will be
@@ -2291,6 +2299,28 @@ var getExtensionWithKnownPrefixes = function(gl, name) {
 };
 
 /**
+ * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
+ * @param {string} name Name of extension to look for.
+ * @param {boolean} extensionEnabled True if the extension was enabled successfully via gl.getExtension().
+ */
+var runExtensionSupportedTest = function(gl, name, extensionEnabled) {
+  var prefixedName = getSupportedExtensionWithKnownPrefixes(gl, name);
+  if (prefixedName !== undefined) {
+      if (extensionEnabled) {
+          testPassed(name + " listed as supported and getExtension succeeded");
+      } else {
+          testFailed(name + " listed as supported but getExtension failed");
+      }
+  } else {
+      if (extensionEnabled) {
+          testFailed(name + " not listed as supported but getExtension succeeded");
+      } else {
+          testPassed(name + " not listed as supported and getExtension failed -- this is legal");
+      }
+  }
+}
+
+/**
  * Returns possible prefixed versions of an extension's name.
  * @param {string} name Name of extension. May already include a prefix.
  * @return {Array.<string>} Variations of the extension name with known
@@ -2749,6 +2779,7 @@ return {
   endsWith: endsWith,
   fillTexture: fillTexture,
   getBytesPerComponent: getBytesPerComponent,
+  getDefault3DContextVersion: getDefault3DContextVersion,
   getExtensionPrefixedNames: getExtensionPrefixedNames,
   getExtensionWithKnownPrefixes: getExtensionWithKnownPrefixes,
   getFileListAsync: getFileListAsync,
@@ -2786,6 +2817,7 @@ return {
   makeImageFromCanvas: makeImageFromCanvas,
   makeVideo: makeVideo,
   error: error,
+  runExtensionSupportedTest: runExtensionSupportedTest,
   shallowCopyObject: shallowCopyObject,
   setupColorQuad: setupColorQuad,
   setupProgram: setupProgram,
