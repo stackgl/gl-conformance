@@ -14,6 +14,24 @@
   "resources/glsl-generator.js": {
     "path": "shims/glsl-generator.js"
   },
+  "resources/glsl-constructor-tests-generator.js": {
+    "path": "shims/glsl-constructor-tests-generator.js"
+  },
+  "resources/iterable-test.js": {
+    "path": "shims/iterable-test.js"
+  },
+  "resources/oes-texture-float-and-half-float-linear.js": {
+    "path": "shims/oes-texture-float-and-half-float-linear.js"
+  },
+  "resources/out-of-bounds-test.js": {
+    "path": "shims/out-of-bounds-test.js"
+  },
+  "context/context-methods.js": {
+    "path": "shims/context-methods.js"
+  },
+  "typedarrays/resources/typed-array-test-cases.js": {
+    "path": "shims/typed-array-test-cases.js"
+  },
   "../resources/js-test-pre.js": {
     "path": "shims/js-test-pre.js"
   },
@@ -34,6 +52,36 @@
   },
   "more/conformance/quickCheckAPI.js": {
     "path": "shims/quickCheckAPI.js"
+  },
+  "more/conformance/argGenerators-A.js": {
+    "path": "shims/argGenerators-A.js"
+  },
+  "more/conformance/argGenerators-B1.js": {
+    "path": "shims/argGenerators-B1.js"
+  },
+  "more/conformance/argGenerators-B2.js": {
+    "path": "shims/argGenerators-B2.js"
+  },
+  "more/conformance/argGenerators-B3.js": {
+    "path": "shims/argGenerators-B3.js"
+  },
+  "more/conformance/argGenerators-B4.js": {
+    "path": "shims/argGenerators-B4.js"
+  },
+  "more/conformance/argGenerators-C.js": {
+    "path": "shims/argGenerators-C.js"
+  },
+  "more/conformance/argGenerators-D_G.js": {
+    "path": "shims/argGenerators-D_G.js"
+  },
+  "more/conformance/argGenerators-G_I.js": {
+    "path": "shims/argGenerators-G_I.js"
+  },
+  "more/conformance/argGenerators-L_S.js": {
+    "path": "shims/argGenerators-L_S.js"
+  },
+  "more/conformance/argGenerators-S_V.js": {
+    "path": "shims/argGenerators-S_V.js"
   },
   "ogles/ogles-utils.js": {
     "path": "shims/ogles-utils.js"

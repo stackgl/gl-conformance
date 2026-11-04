@@ -8,6 +8,7 @@
   "context/context-attribute-preserve-drawing-buffer.html",
   "context/premultiplyalpha-test.html",
   "extensions/oes-texture-float-with-video.html",
+  "rendering/multisample-corruption.html",
   "textures/texture-npot-video.html",
   "textures/gl-pixelstorei.html",
   "textures/gl-teximage.html",
@@ -15,6 +16,9 @@
   "textures/texture-transparent-pixels-initialized.html",
   "textures/tex-image-canvas-corruption.html",
   "textures/texture-upload-size.html",
+  "typedarrays/array-large-array-tests.html",
+  "typedarrays/typed-arrays-in-workers.html",
+  "more/conformance/quickCheckAPI-S_V.html",
   "more/functions/readPixelsBadArgs.html",
   "more/functions/texImage2DHTML.html",
   "more/functions/texSubImage2DHTML.html"
