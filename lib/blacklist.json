@@ -10,7 +10,6 @@
   "extensions/webgl-compressed-texture-s3tc.html",
   "extensions/oes-texture-float-with-video.html",
   "extensions/oes-texture-float-with-video.html",
-  "extensions/oes-texture-half-float.html",
   "glsl/misc/re-compile-re-link.html",
   "glsl/samplers/glsl-function-texture2dproj.html",
   "programs/program-test.html",
