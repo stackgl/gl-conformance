@@ -46,12 +46,6 @@ var GLcanvas = document.createElement('canvas');
 var canvas2D = document.createElement('canvas');
 GLcanvas.width = GLcanvas.height = 256;
 GL = getGLContext(GLcanvas);
-Array.from = function(o) {
-  var a = [];
-  for (var i=0; i<o.length; i++)
-    a.push(o[i]);
-  return a;
-}
 Array.prototype.has = function(v) { return this.indexOf(v) != -1; }
 Array.prototype.random = function() { return this[randomInt(this.length)]; }
 

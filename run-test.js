@@ -6,7 +6,7 @@ var testCases = require('./node-test/index')
 
 // A browser gives each case a fresh page, but here every case shares one process, so
 // what a case does to the built-ins or adds to the global object is undone when it ends.
-// quickCheckAPI.js replaces Array.from, for example, and many helpers assign undeclared globals.
+// quickCheckAPI.js adds has and random to Array.prototype, for example, and many helpers assign undeclared globals.
 var BUILT_INS = [
   Object, Function, Array, String, Number, Boolean, Symbol, Date, RegExp, Error, Promise,
   Map, Set, WeakMap, ArrayBuffer, DataView, Int8Array, Uint8Array, Uint8ClampedArray,
