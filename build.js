@@ -1,5 +1,3 @@
-var rimraf = require('rimraf')
-var mkdirp = require('mkdirp')
 var fs = require('fs')
 var path = require('path')
 
@@ -95,6 +93,6 @@ function build () {
 }
 
 // Clear directory and run build
-rimraf(TEST_DIR, function () {
-  mkdirp(TEST_DIR, build)
-})
+fs.rmSync(TEST_DIR, { recursive: true, force: true })
+fs.mkdirSync(TEST_DIR, { recursive: true })
+build()
