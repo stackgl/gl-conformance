@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "beefy": "^2.1.1",
-    "browserify": "^6.0.2"
+    "browserify": "^17.0.1"
   },
   "scripts": {
     "test": "beefy example.js --open",
